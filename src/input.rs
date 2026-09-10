@@ -31,7 +31,7 @@ mod tests {
     }
 
     #[test]
-    fn a_new_press_is_accepted_after_focus_changes() {
+    fn subsequent_fresh_presses_are_accepted() {
         assert!(is_visibility_toggle(WM_KEYDOWN, VK_F8, 1));
         assert!(is_visibility_toggle(WM_KEYDOWN, VK_F8, 1));
     }

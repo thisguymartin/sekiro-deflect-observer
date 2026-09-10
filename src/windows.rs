@@ -56,17 +56,14 @@ unsafe extern "system" fn DllMain(module: *mut c_void, reason: u32, _: *mut c_vo
 }
 
 unsafe extern "system" fn initialize(module: *mut c_void) -> u32 {
-    match std::panic::catch_unwind(|| start_observer(module)) {
-        Ok(Ok(())) => 0,
-        Ok(Err(error)) => {
+    std::panic::catch_unwind(|| match start_observer(module) {
+        Ok(()) => 0,
+        Err(error) => {
             report_failure(&format!("Initialization failed: {error}"));
             1
         }
-        Err(_) => {
-            report_failure("Initialization panicked. Restart Sekiro without the observer profile.");
-            1
-        }
-    }
+    })
+    .unwrap_or(1)
 }
 
 fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>> {
@@ -162,8 +159,9 @@ impl ImguiRenderLoop for Observer {
         key: WPARAM,
         flags: LPARAM,
     ) -> BeforeWndProc {
-        let foreground = unsafe { GetForegroundWindow() };
-        if foreground == hwnd && input::is_visibility_toggle(message, key.0, flags.0) {
+        if input::is_visibility_toggle(message, key.0, flags.0)
+            && unsafe { GetForegroundWindow() } == hwnd
+        {
             self.visible.fetch_xor(true, Ordering::Relaxed);
         }
         BeforeWndProc::Continue

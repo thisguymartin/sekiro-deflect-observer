@@ -44,7 +44,7 @@ The execution-policy option applies to that script process. It does not change t
 
 The toolchain file selects Rust 1.94.0 and the required formatting and lint components. The first build downloads the toolchain and locked dependencies. These downloads are development activity, not observer runtime traffic.
 
-The build script runs formatting, Clippy, unit tests, and a release build, then creates:
+The build script runs formatting, Clippy, unit tests, and a release build. It then loads the DLL in a separate PowerShell process and checks that the DLL rejects this non-Sekiro host before installing hooks. Finally, it creates:
 
 ```text
 dist/

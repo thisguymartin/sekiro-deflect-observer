@@ -29,6 +29,9 @@ try {
     cargo build --release --locked --target x86_64-pc-windows-msvc
     if ($LASTEXITCODE -ne 0) { throw 'Windows DLL build failed.' }
 
+    powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'test-dll-load.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'DLL startup and host rejection check failed.' }
+
     & (Join-Path $PSScriptRoot 'package.ps1')
 }
 finally {

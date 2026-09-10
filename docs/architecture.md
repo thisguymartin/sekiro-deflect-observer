@@ -1,6 +1,6 @@
 # Windows overlay bootstrap
 
-The first native milestone proves that our DLL can be built, loaded, drawn, hidden, and stopped with the game. It does not inspect deflect state.
+The first native milestone provides a DLL for testing loading, drawing, hiding, and stopping with the game. Windows CI checks compilation and packaging; in-game behavior still needs testing. The DLL does not inspect deflect state.
 
 ```text
 me3 profile -> Windows x64 DLL
@@ -33,12 +33,10 @@ A DLL loaded by me3 keeps the user workflow to one launch profile. A separate in
 
 The portable code is limited to behavior used by this DLL. A detector, bounded history, and metrics will be added when a real reader can produce justified observations. Their required failure semantics remain in [the testing requirements](../tests/README.md).
 
-The design review had reduced provider coverage. The configured Claude lanes were unauthenticated and Grok was unavailable. A native Codex lane and the parent considered the DLL-only design. This is not a completed multi-provider review.
-
 ## Sources and verification limits
 
 The implementation uses the downloaded hudhook 0.9.2 crate and its DirectX 11 API, rather than the older version numbers in some tutorial examples. See [hudhook](https://github.com/veeenu/hudhook) and [me3 native-DLL profiles](https://github.com/garyttierney/me3/blob/main/docs/configuration-reference.md).
 
-Portable tests validate host checks, hashing, and input-event interpretation. Windows compilation validates the Windows API bindings and DLL link. Neither proves correct rendering inside Sekiro. Record that separately using [the Windows checklist](windows.md#test-the-first-launch).
+Portable tests validate host checks, hashing, and input-event interpretation. Windows compilation validates the Windows API bindings and DLL link. A Windows load check verifies DLL startup and refusal to install hooks in PowerShell. These checks do not prove correct rendering inside Sekiro. Record that separately using [the Windows checklist](windows.md#test-the-first-launch).
 
 Dependencies and the Rust toolchain are pinned. Byte-identical rebuilds across machines and ZIP timestamps have not been established. A clean build is not a claim of binary reproducibility.
