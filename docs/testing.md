@@ -2,6 +2,8 @@
 
 Use this guide to collect evidence about the candidate player effect `105010` on Sekiro PC 1.06. Start with the external Cheat Engine window described in the handover.
 
+For the native Rust proof of concept included in this repository, use [the Windows build and run instructions](windows.md). It does not depend on the original prototype. This document covers the separate, older Cheat Engine research path.
+
 **Current blocker:** the prototype files and their operating instructions are missing from this checkout. You can prepare a report now. Activation and gameplay testing require the [prototype import](../prototypes/cheat-engine/README.md).
 
 ## Prepare a session

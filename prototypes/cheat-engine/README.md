@@ -2,6 +2,8 @@
 
 The handover describes an existing V0.1 prototype with embedded Lua, a read-only memory observer, an external timing-history window, and synthetic-memory tests. Those files are not included here yet. This directory preserves the intended location for the original research.
 
+This prototype is optional. The native proof of concept has its own [Windows build and run instructions](../../docs/windows.md) and requires no files from this directory.
+
 ## Import the prototype
 
 1. Copy the original table, Lua sources, and tests into this directory without editing their contents.

@@ -1,8 +1,8 @@
 # Test a native release candidate
 
-Use this procedure after a native runtime and packaged artifact exist. **These checks are not executable against the current docs-only checkout.** The loader, filenames, launch configuration, and build commands are not selected yet.
+Use this procedure to validate a native release candidate. The current Rust DLL is an overlay bootstrap with an unavailable reader. Follow [the Windows instructions](windows.md) to build it and exercise loading, drawing, input, and removal. Full V1 validation remains blocked until real deflect-state detection exists.
 
-Use [the prototype guide](testing.md) for current research. Do not advertise a stable release based on the checks below until the evidence exists.
+Use [the effect investigation guide](reverse-engineering.md) for signal research. Do not advertise a stable release based on the checks below until the evidence exists.
 
 ## Prepare the candidate
 
