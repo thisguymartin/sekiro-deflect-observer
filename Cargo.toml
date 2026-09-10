@@ -1,0 +1,23 @@
+[package]
+name = "sekiro-deflect-observer"
+version = "0.2.0-dev"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+description = "Experimental Sekiro overlay bootstrap; deflect-state reader pending validation"
+repository = "https://github.com/thisguymartin/sekiro-deflect-observer"
+
+[lib]
+name = "sekiro_deflect_observer"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sha2 = "=0.10.9"
+
+[target.'cfg(windows)'.dependencies]
+hudhook = { version = "=0.9.2", default-features = false, features = ["dx11"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

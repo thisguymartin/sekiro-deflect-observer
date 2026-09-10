@@ -1,8 +1,16 @@
-# Automated test requirements
+# Tests and remaining requirements
 
-This checkout has no executable tests or test runner yet. The handover reports synthetic-memory tests in the original prototype. Import those with the prototype and record the exact command in its [operating instructions](../prototypes/cheat-engine/README.md).
+The Rust code has unit tests for executable-name checks, SHA-256 diagnostics, read-error propagation, and F8 repeat handling. Run them on macOS or Windows with:
 
-These are implementation acceptance requirements. They do not describe a passing suite.
+```sh
+cargo test --locked
+```
+
+The DLL and render hooks are Windows-only. These unit tests do not load the DLL, start Sekiro, or prove in-game behavior. Run the complete Windows build checks through [scripts/build.ps1](../scripts/build.ps1), then follow [the native first-launch checklist](../docs/windows.md#test-the-first-launch).
+
+The original Cheat Engine prototype is not required for these checks.
+
+The remaining tables are future reader and history requirements. They do not describe an implemented or passing suite.
 
 ## Reader and detector contract
 

@@ -1,0 +1,7 @@
+profileVersion = "v1"
+
+[[supports]]
+game = "sekiro"
+
+[[natives]]
+path = 'sekiro_deflect_observer.dll'

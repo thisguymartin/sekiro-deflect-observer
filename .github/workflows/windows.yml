@@ -1,0 +1,30 @@
+name: Windows proof of concept
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Build, test, and package
+        shell: pwsh
+        run: ./scripts/build.ps1
+      - name: Upload the test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SekiroDeflectObserver-windows-x64
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+          retention-days: 14
