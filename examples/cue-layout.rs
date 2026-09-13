@@ -18,15 +18,24 @@ mod diagnostics {
 mod cue_draw;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let output = std::path::Path::new("dist/review-0.6/layout");
-    fs::create_dir_all(output)?;
+    let output = std::env::args_os()
+        .nth(1)
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| "dist/review-0.6/layout".into());
+    fs::create_dir_all(&output)?;
+    let gallery = std::env::args().any(|arg| arg == "--gallery");
+    let display = if gallery {
+        [960.0, 540.0]
+    } else {
+        [1920.0, 1080.0]
+    };
     let mut context = imgui::Context::create();
     context.set_ini_filename(None);
     let fonts = cue_draw::initialize_fonts(&mut context);
     let atlas = context.fonts().build_rgba32_texture();
     let (aw, ah) = (atlas.width, atlas.height);
     fs::write(output.join("atlas.rgba"), atlas.data)?;
-    context.io_mut().display_size = [1920.0, 1080.0];
+    context.io_mut().display_size = display;
     context.io_mut().delta_time = 1.0 / 60.0;
     let ui = context.frame();
     let camera = cue::Camera {
@@ -35,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         forward: [0.0, 0.0, 1.0],
         position: [0.0; 3],
         fov: 1.0,
-        aspect: 16.0 / 9.0,
+        aspect: display[0] / display[1],
         near: 0.08,
         far: 1000.0,
     };
@@ -48,8 +57,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .into_iter()
     .enumerate()
     {
-        let y = 180.0 + row as f32 * 230.0;
-        let anchor_y = (1.0 - y / 540.0) * 5.0 * (0.5_f32).tan();
+        let y = if gallery {
+            105.0 + row as f32 * 110.0
+        } else {
+            180.0 + row as f32 * 230.0
+        };
+        let anchor_y = (1.0 - y / (display[1] / 2.0)) * 5.0 * (0.5_f32).tan();
         let target = cue::Target {
             handle: 1,
             model,
@@ -77,8 +90,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     let data = context.render();
+    if data.total_vtx_count == 0 {
+        return Err("The offline camera produced no drawable cue geometry".into());
+    }
     let mut file = File::create(output.join("mesh.json"))?;
-    write!(file, "{{\"atlas\":[{aw},{ah}],\"lists\":[")?;
+    write!(
+        file,
+        "{{\"atlas\":[{aw},{ah}],\"display\":{display:?},\"lists\":["
+    )?;
     for (n, list) in data.draw_lists().enumerate() {
         if n > 0 {
             write!(file, ",")?;

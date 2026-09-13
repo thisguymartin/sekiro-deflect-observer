@@ -8,11 +8,12 @@ ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT/'dist/video-tools'))
 from PIL import Image, ImageDraw
 
-folder=ROOT/'dist/review-0.6/layout'
+folder=Path(sys.argv[1]) if len(sys.argv)>1 else ROOT/'dist/review-0.6/layout'
 data=json.loads((folder/'mesh.json').read_text())
 aw,ah=data['atlas']
 texture=Image.frombytes('RGBA',(aw,ah),(folder/'atlas.rgba').read_bytes()).load()
-canvas=Image.new('RGB',(1920,1080),(40,43,46))
+width,height=map(int,data.get('display',[1920,1080]))
+canvas=Image.new('RGB',(width,height),(40,43,46))
 pixels=canvas.load()
 for mesh in data['lists']:
     vertices,indices=mesh['vertices'],mesh['indices']
@@ -22,9 +23,9 @@ for mesh in data['lists']:
             denominator=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1])
             if abs(denominator)<1e-8: continue
             x0=max(0,math.floor(min(a[0],b[0],c[0])),math.floor(clip[0]))
-            x1=min(1920,math.ceil(max(a[0],b[0],c[0])),math.ceil(clip[2]))
+            x1=min(width,math.ceil(max(a[0],b[0],c[0])),math.ceil(clip[2]))
             y0=max(0,math.floor(min(a[1],b[1],c[1])),math.floor(clip[1]))
-            y1=min(1080,math.ceil(max(a[1],b[1],c[1])),math.ceil(clip[3]))
+            y1=min(height,math.ceil(max(a[1],b[1],c[1])),math.ceil(clip[3]))
             for y in range(y0,y1):
                 for x in range(x0,x1):
                     u=((b[1]-c[1])*(x+.5-c[0])+(c[0]-b[0])*(y+.5-c[1]))/denominator
@@ -38,6 +39,7 @@ for mesh in data['lists']:
                     old=pixels[x,y]
                     pixels[x,y]=tuple(round(old[k]*(1-alpha)+(u*a[k+4]+v*b[k+4]+w*c[k+4])*tex[k]/255*alpha) for k in range(3))
 draw=ImageDraw.Draw(canvas)
-draw.text((720,45),'OFFLINE RENDER CHECK / 1080p scale / not gameplay',fill=(235,235,235))
+caption='0.6.3 DESIGN / OFFLINE RENDER / not gameplay' if width==960 else 'OFFLINE RENDER CHECK / 1080p scale / not gameplay'
+draw.text(((width-draw.textlength(caption))/2,20 if width==960 else 45),caption,fill=(235,235,235))
 canvas.save(folder/'cue-layout.png')
 print(folder/'cue-layout.png')

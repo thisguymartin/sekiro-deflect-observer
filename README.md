@@ -4,9 +4,23 @@ A training tool with a timing slider above Wolf that anticipates selected incomi
 
 **Windows overhead cue preview. Green timing is an estimate; exact parry timing is not validated.**
 
-This checkout contains a native Rust DLL, Windows build scripts, and a me3 launch profile. Version 0.6.0-preview lowers the player-relative bar, enlarges the diamond and action label, and improves successive combo cues. Green **PARRY**, orange **DODGE** for mapped grabs, and blue **JUMP** for mapped sweeps use extracted animation events and attack parameters. Unknown responses stay unverified. See [preview scope, calculation, coverage, and limits](docs/cue-preview.md).
+For the friend beta, use the [drop-in installation and sharing guide](docs/sharing-beta.md).
+It packages the same 0.6.3 observer with an ASI loader: copy two files beside
+`sekiro.exe` and launch through Steam. That route does not require me3 and still
+needs a live game launch trial. Do not overwrite an existing `dinput8.dll`.
+
+Current design, rendered from the shared overlay code with synthetic attack states:
+
+![0.6.3 offline design preview: READY, PARRY, DODGE and JUMP](docs/images/0.6.3-offline-design.png)
+
+[Gameplay screenshot and image provenance](docs/screenshots.md). The image above
+shows appearance, not a successful-deflect or live 0.6.3 gameplay test.
+
+This checkout contains a native Rust DLL, Windows build scripts, and a me3 launch profile. Version 0.6.3-preview refines the supplied reference's design with a larger glowing diamond, longer needle, moving magenta pointer, translucent ribbon wings and outlined English labels. It retains the lower player-relative placement and combo reader improvements. Green **PARRY**, orange **DODGE** for mapped grabs, and blue **JUMP** for mapped sweeps use extracted animation events and attack parameters. Unknown responses stay unverified. The visual update does not change the estimated press intervals or game acceptance windows. See [preview scope, calculation, coverage, and limits](docs/cue-preview.md) and [visual validation](docs/validation-0.6.3.md).
 
 The data contains 2,161 phases across 54 models: 450 green estimates, 39 dodge phases, and 58 jump phases. Chained Ogre and Guardian Ape have selected mappings; this is not every enemy, attack, or form. Stricter response checks remove questionable green prompts from 0.5.0. These counts describe data, not verified gameplay support. See [the validation record](docs/validation-0.6.md).
+
+The 0.6.0 gameplay trial exposed the Ogre's auxiliary animation hiding its attack track. Version 0.6.1 corrects that reader selection using the current engine batch; the corrected cues require another live timing check.
 
 The handover's claim of an earlier Cheat Engine prototype is unconfirmed; the user has never had it. No prototype is required. Public source research provides the candidate layout; live validation remains pending.
 
