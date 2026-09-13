@@ -16,6 +16,11 @@ Current design, rendered from the shared overlay code with synthetic attack stat
 [Gameplay screenshot and image provenance](docs/screenshots.md). The image above
 shows appearance, not a successful-deflect or live 0.6.3 gameplay test.
 
+Earlier in-game placement, from the **0.6.0 gameplay trial** (the current design
+is shown above):
+
+![Earlier 0.6.0 gameplay showing the neutral LOCKED bar above Wolf](docs/images/0.6.0-gameplay-placement.jpg)
+
 This checkout contains a native Rust DLL, Windows build scripts, and a me3 launch profile. Version 0.6.3-preview refines the supplied reference's design with a larger glowing diamond, longer needle, moving magenta pointer, translucent ribbon wings and outlined English labels. It retains the lower player-relative placement and combo reader improvements. Green **PARRY**, orange **DODGE** for mapped grabs, and blue **JUMP** for mapped sweeps use extracted animation events and attack parameters. Unknown responses stay unverified. The visual update does not change the estimated press intervals or game acceptance windows. See [preview scope, calculation, coverage, and limits](docs/cue-preview.md) and [visual validation](docs/validation-0.6.3.md).
 
 The data contains 2,161 phases across 54 models: 450 green estimates, 39 dodge phases, and 58 jump phases. Chained Ogre and Guardian Ape have selected mappings; this is not every enemy, attack, or form. Stricter response checks remove questionable green prompts from 0.5.0. These counts describe data, not verified gameplay support. See [the validation record](docs/validation-0.6.md).
