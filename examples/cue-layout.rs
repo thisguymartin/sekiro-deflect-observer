@@ -23,7 +23,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| "dist/review-0.6/layout".into());
     fs::create_dir_all(&output)?;
-    let gallery = std::env::args().any(|arg| arg == "--gallery");
+    let args: Vec<String> = std::env::args().collect();
+    let gallery = args.iter().any(|arg| arg == "--gallery");
+    let state = args
+        .iter()
+        .position(|arg| arg == "--state")
+        .map(|i| {
+            args.get(i + 1)
+                .map(String::as_str)
+                .ok_or("Missing --state value")
+        })
+        .transpose()?;
+    if gallery && state.is_some() {
+        return Err("Choose --gallery or --state, not both".into());
+    }
+    let scenarios = match state {
+        Some("ready") => vec![(1010, 3000, 0.3)],
+        Some("parry") => vec![(1010, 3000, 0.60)],
+        Some("dodge") => vec![(5020, 100003005, 0.45)],
+        Some("jump") => vec![(5100, 100003009, 1.05)],
+        Some("unverified") => vec![(1010, 3005, 0.90)],
+        Some("locked") => vec![(1010, -1, 0.0)],
+        Some(_) => {
+            return Err("State must be ready, parry, dodge, jump, unverified or locked".into())
+        }
+        None => vec![
+            (1010, 3000, 0.3),
+            (1010, 3000, 0.60),
+            (5020, 100003005, 0.45),
+            (5100, 100003009, 1.05),
+        ],
+    };
     let display = if gallery {
         [960.0, 540.0]
     } else {
@@ -48,16 +78,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         near: 0.08,
         far: 1000.0,
     };
-    for (row, (model, animation, time)) in [
-        (1010, 3000, 0.3),
-        (1010, 3000, 0.60),
-        (5020, 100003005, 0.45),
-        (5100, 100003009, 1.05),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let y = if gallery {
+    for (row, (model, animation, time)) in scenarios.into_iter().enumerate() {
+        let y = if state.is_some() {
+            display[1] / 2.0
+        } else if gallery {
             105.0 + row as f32 * 110.0
         } else {
             180.0 + row as f32 * 230.0
@@ -94,9 +118,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("The offline camera produced no drawable cue geometry".into());
     }
     let mut file = File::create(output.join("mesh.json"))?;
+    // Render a region of the full-resolution geometry for documentation close-ups.
+    // Camera projection and the live overlay's 1080p scale are unchanged.
+    let viewport = if state.is_some() {
+        [660.0, 410.0, 600.0, 210.0]
+    } else {
+        [0.0, 0.0, display[0], display[1]]
+    };
+    let label = state.unwrap_or("overview");
+    let version = env!("CARGO_PKG_VERSION");
     write!(
         file,
-        "{{\"atlas\":[{aw},{ah}],\"display\":{display:?},\"lists\":["
+        "{{\"atlas\":[{aw},{ah}],\"display\":{display:?},\"viewport\":{viewport:?},\"label\":\"{label}\",\"version\":\"{version}\",\"lists\":["
     )?;
     for (n, list) in data.draw_lists().enumerate() {
         if n > 0 {

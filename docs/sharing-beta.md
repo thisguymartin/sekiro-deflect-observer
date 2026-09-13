@@ -33,8 +33,15 @@ The ZIP was reopened and all eight files compared with their packaged bytes.
 No game files, saves, recordings, development tools or me3 binaries are included.
 The loader is distributed with its and its linked-library license notices.
 
-To reproduce this exact package, retain `dist/drop-in-research` and the original
-0.6.3 ZIP, run `scripts/test-asi-loader.ps1`, then `scripts/package-drop-in.py`.
+The [build-and-run guide](windows.md) now covers both installation methods,
+building the observer from source, and running a freshly compiled DLL with the
+drop-in loader. The normal build command creates the me3 package.
+
+To repackage the tested drop-in release, retain `dist/drop-in-research`, the
+original 0.6.3 ZIP, and its extracted `Mods/SekiroDeflectObserver-0.6.3-preview`
+folder for the smoke check. Then run `scripts/test-asi-loader.ps1` followed by
+`scripts/package-drop-in.py` in a separate restore folder. See the guide's
+[complete restore steps](windows.md#reproduce-the-existing-drop-in-zip).
 The packaging script refuses to replace an existing archive and requires the
 pinned binary hashes. The loader URL uses a moving upstream tag: a future
 download may differ and must not silently replace the pinned binary.

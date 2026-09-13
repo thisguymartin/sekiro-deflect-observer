@@ -4,6 +4,8 @@ A training tool with a timing slider above Wolf that anticipates selected incomi
 
 **Windows overhead cue preview. Green timing is an estimate; exact parry timing is not validated.**
 
+**Quick links:** [Install and run](#install-and-run-on-windows) · [Build from source](#build-from-source) · [More images](docs/screenshots.md) · [Troubleshooting](docs/windows.md#troubleshoot)
+
 For the friend beta, use the [drop-in installation and sharing guide](docs/sharing-beta.md).
 It packages the same 0.6.3 observer with an ASI loader: copy two files beside
 `sekiro.exe` and launch through Steam. That route does not require me3 and still
@@ -12,6 +14,10 @@ needs a live game launch trial. Do not overwrite an existing `dinput8.dll`.
 Current design, rendered from the shared overlay code with synthetic attack states:
 
 ![0.6.3 offline design preview: READY, PARRY, DODGE and JUMP](docs/images/0.6.3-offline-design.png)
+
+| PARRY - current offline detail | DODGE - current offline detail | JUMP - current offline detail |
+| --- | --- | --- |
+| ![Green PARRY close-up](docs/images/0.6.3-parry-detail.png) | ![Orange DODGE close-up](docs/images/0.6.3-dodge-detail.png) | ![Blue JUMP close-up](docs/images/0.6.3-jump-detail.png) |
 
 [Gameplay screenshot and image provenance](docs/screenshots.md). The image above
 shows appearance, not a successful-deflect or live 0.6.3 gameplay test.
@@ -31,19 +37,70 @@ The handover's claim of an earlier Cheat Engine prototype is unconfirmed; the us
 
 The requested first usable version is an overhead **parry-now cue** driven by incoming attack timing. The preview implements placement and an attack-based estimate; predicting actual player contact and verifying successful deflects remain. The optional player-effect panel is a research aid. See [the cue requirements and timing research](docs/parry-cue.md). The tool does not automate inputs or change the deflect window.
 
-## Build and run on Windows
+## Install and run on Windows
 
-Follow [the Windows instructions](docs/windows.md). With Rust and the Visual Studio C++ build tools installed, run this from the source directory:
+Your friend needs **Windows x64 and Sekiro on Steam**. They do not need to build
+anything or install Rust, Python, Visual Studio, Cheat Engine or me3 for the
+drop-in package.
+
+1. Get `SekiroDeflectObserver-0.6.3-preview-drop-in-windows-x64.zip` from the person sharing the beta and extract it.
+2. Close Sekiro. In Steam, right-click Sekiro → **Manage → Browse local files**.
+3. Copy `dinput8.dll` and `sekiro_deflect_observer.asi` beside `sekiro.exe`.
+4. Launch normally through Steam, load a save and lock onto an enemy. Press **F9** to check the observer version.
+
+If `dinput8.dll` already exists, **do not overwrite it**; another mod's loader
+needs a compatibility check first. Use one observer loading method per session.
+The ZIP's `START-HERE.txt` repeats these instructions and explains the colors.
+This drop-in route has passed a standalone loader check; live Sekiro startup
+and installation on another PC remain beta checks.
+
+| Key | Action |
+| --- | --- |
+| F6 / F7 | Lower / raise the bar for this session |
+| F8 | Show / hide the overlay |
+| F9 | Show / hide diagnostics and version |
+
+To uninstall, close Sekiro and remove `sekiro_deflect_observer.asi`. Remove the
+supplied `dinput8.dll` only if no other mod uses it. With the drop-in files still
+installed, a normal Steam launch loads the observer.
+
+The separate `SekiroDeflectObserver-0.6.3-preview-windows-x64.zip` uses me3.
+Extract that variant into its own folder, install [me3](https://github.com/garyttierney/me3/releases),
+keep Steam running and double-click `observer.me3` with Sekiro closed.
+See [the complete Windows guide](docs/windows.md) for both methods and troubleshooting.
+
+<a id="build-and-run-on-windows"></a>
+
+## Build from source
+
+These steps are for development. Install **Rust through rustup** and
+**Visual Studio Build Tools with Desktop development with C++ and the Windows SDK**.
+Open Developer PowerShell for Visual Studio in this source folder, then run:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-Extract the ZIP created in `dist`, install [me3](https://github.com/garyttierney/me3/releases), start Steam, and double-click the extracted `observer.me3` while Sekiro is closed.
+The script runs formatting, Clippy, Rust tests, an optimized Windows build and
+the DLL startup check, then creates:
 
-The build creates `sekiro_deflect_observer.dll`. F6 lowers the bar; F7 raises it (session only). F8 hides or shows the cue; F9 toggles diagnostics. Close Sekiro fully before launching a different package; a running process retains its loaded DLL.
+```text
+target/x86_64-pc-windows-msvc/release/sekiro_deflect_observer.dll
+dist/SekiroDeflectObserver-0.6.3-preview-windows-x64.zip
+dist/SekiroDeflectObserver-0.6.3-preview-windows-x64.zip.sha256
+```
 
-Built packages require no Cheat Engine, Rust, Visual Studio, or Python on the player's PC. The Windows CI workflow also builds a downloadable test artifact. These are engineering test packages, not stable mod releases.
+This build produces the **me3 package**. To run your compiled DLL with the
+drop-in loader instead, copy it into a separate test folder as
+`sekiro_deflect_observer.asi`, alongside the `dinput8.dll` from the friend ZIP,
+then follow the drop-in installation steps. Restart Sekiro after every rebuild.
+
+The [step-by-step build and packaging guide](docs/windows.md#build-the-package-on-windows)
+covers getting the source, prerequisites, exact commands and the pinned inputs
+needed to reproduce the existing drop-in ZIP. `scripts/package-drop-in.py`
+repackages that specific tested release; it is not a general fresh-build packager.
+Keep older ZIPs before building again: `build.ps1` replaces its same-version me3 ZIP.
+The checked-in generated timings are sufficient to compile; game archives are not needed.
 
 ## Test the project
 
