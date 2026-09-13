@@ -1,6 +1,6 @@
 # Investigate effect 105010
 
-The handover identifies special effect `105010` as a candidate signal. No source implementation or real-game evidence is available in this checkout. Its relationship to the player's deflect window remains an unverified hypothesis.
+The handover identifies special effect `105010` as a candidate signal. A diagnostic reader now exists; [its source provenance and limits](reader-research.md) describe the implementation. Its relationship to the player's deflect window remains an unverified hypothesis. The handover's claim of a prior prototype is unconfirmed.
 
 Use the [gameplay checklist](../tests/manual/gameplay-checklist.md) to gather evidence before changing the detector or public wording.
 

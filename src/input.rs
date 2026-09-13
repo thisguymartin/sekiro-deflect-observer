@@ -7,6 +7,21 @@ pub fn is_visibility_toggle(message: u32, key: usize, flags: isize) -> bool {
     message == WM_KEYDOWN && key == VK_F8 && flags & PREVIOUS_KEY_STATE == 0
 }
 
+pub fn is_diagnostics_toggle(message: u32, key: usize, flags: isize) -> bool {
+    message == WM_KEYDOWN && key == 0x78 && flags & PREVIOUS_KEY_STATE == 0
+}
+
+pub fn placement_adjustment(message: u32, key: usize, flags: isize) -> Option<i32> {
+    if message != WM_KEYDOWN || flags & PREVIOUS_KEY_STATE != 0 {
+        return None;
+    }
+    match key {
+        0x75 => Some(8),
+        0x76 => Some(-8),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

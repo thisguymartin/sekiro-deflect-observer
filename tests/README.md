@@ -10,7 +10,7 @@ The DLL and render hooks are Windows-only. These unit tests do not load the DLL,
 
 The original Cheat Engine prototype is not required for these checks.
 
-The remaining tables are future reader and history requirements. They do not describe an implemented or passing suite.
+The diagnostic reader has synthetic tests for hash gating, complete/empty lists, unreadable bytes, missing/changed players, invalid pointers, cycles, traversal limits, freshness, gaps, ordering, and bounded transitions. The tables below remain the broader target contract, not a fully passing suite. Interval metrics and complete deflect-window semantics are pending. See [reader status](../docs/reader-research.md).
 
 ## Reader and detector contract
 

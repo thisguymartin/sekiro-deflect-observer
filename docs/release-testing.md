@@ -1,6 +1,6 @@
 # Test a native release candidate
 
-Use this procedure to validate a native release candidate. The current Rust DLL is an overlay bootstrap with an unavailable reader. Follow [the Windows instructions](windows.md) to build it and exercise loading, drawing, input, and removal. Full V1 validation remains blocked until real deflect-state detection exists.
+Use this procedure to validate a native release candidate. The Rust DLL includes an experimental incoming-attack timing slider and a separate candidate-effect diagnostic reader. Follow [the Windows instructions](windows.md), [cue scope](cue-preview.md), and [the 0.6 evidence record](validation-0.6.md). Exact contact timing, response accuracy and complete attack coverage remain unvalidated.
 
 Use [the effect investigation guide](reverse-engineering.md) for signal research. Do not advertise a stable release based on the checks below until the evidence exists.
 
@@ -77,7 +77,7 @@ Leave each item unchecked until a reviewer can follow its evidence link.
 - [ ] Offline behavior, package scan results, and third-party licenses are reviewed.
 - [ ] Screenshots and a short demonstration show the exact release candidate working.
 - [ ] The package includes its version, checksum, README, credits, and limitations.
-- [ ] Release text describes completed V1 behavior without incoming-attack prediction claims.
+- [ ] Release text distinguishes the player-effect research panel from the overhead parry cue. Cue claims name the attacks and conditions actually validated using [the cue requirements](parry-cue.md).
 - [ ] Current GitHub and Nexus Mods submission requirements have been checked at publication time, including applicable AI disclosure rules.
 - [ ] Any unresolved limitation is visible in the release notes and compatibility table.
 

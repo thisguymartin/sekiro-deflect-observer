@@ -1,0 +1,1017 @@
+{
+  "parameter_sources": {
+    "container_sha256": "a41a78778a361bcf8d52db9adb6f55eb205193a32916eb0a44d57c6f01b06ce6",
+    "sources": {
+      "AtkParam_Npc": {
+        "sha256": "842b55f68bed123711a002e01f618cd82ec2f9dec0b2211ba4fea73275c7ea16",
+        "schema_sha256": "a807be0e67cc46107da07b2da6afdb48d17a23f5cd0bff4bbd3db6a5e31f6873",
+        "rows": 2396
+      },
+      "BehaviorParam": {
+        "sha256": "d641d0c861b08a10f9f2c2f78d3fce688fd5d5cdfe13a3cf831608af047da7a5",
+        "schema_sha256": "d71ac6d985929609d482b7c972ee7268a563000ff9f4182dd631ce6f02d07d7f",
+        "rows": 3128
+      },
+      "NpcParam": {
+        "sha256": "31ffd638638d9cd05be43cb7b0c6f1b9b4214f22cd31e1c5aee1671bfe365eaf",
+        "schema_sha256": "02708450910e0e566d81d3a928b142a9eaba53eb797759e4fc2eecc97de529dd",
+        "rows": 1279
+      },
+      "ThrowParam": {
+        "sha256": "20ca0164cf926fb5758e71dac2441646698f658b4421caaab715e856f5789b52",
+        "schema_sha256": "7d195c06bc5d929b055273b3016801f79d8f56ab1972f411cefef534542c299d",
+        "rows": 2414
+      }
+    }
+  },
+  "attack_names_sha256": "e44814915e2d6ebde60f69c66b499c046e2a4cb5d1f01a8ccd1e2c313993ee9f",
+  "interpretation": "Response classification from parameters and attack names; timing and runtime variation selection need gameplay validation.",
+  "phases": [
+    {
+      "model": 1010,
+      "animation": 3014,
+      "start": 1.0666667222976685,
+      "end": 1.3333333730697632,
+      "response": "jump",
+      "attack_params": [
+        10100240
+      ]
+    },
+    {
+      "model": 1010,
+      "animation": 3020,
+      "start": 1.0666667222976685,
+      "end": 1.3333333730697632,
+      "response": "jump",
+      "attack_params": [
+        10100240
+      ]
+    },
+    {
+      "model": 1020,
+      "animation": 3012,
+      "start": 1.1333333253860474,
+      "end": 1.2666666507720947,
+      "response": "dodge",
+      "attack_params": [
+        10200220
+      ]
+    },
+    {
+      "model": 1020,
+      "animation": 3068,
+      "start": 1.100000023841858,
+      "end": 1.2333333492279053,
+      "response": "jump",
+      "attack_params": [
+        10200570
+      ]
+    },
+    {
+      "model": 1020,
+      "animation": 100003006,
+      "start": 1.0,
+      "end": 1.2666666507720947,
+      "response": "jump",
+      "attack_params": [
+        10201020
+      ]
+    },
+    {
+      "model": 1020,
+      "animation": 100003057,
+      "start": 1.1666666269302368,
+      "end": 1.4333332777023315,
+      "response": "jump",
+      "attack_params": [
+        10201020
+      ]
+    },
+    {
+      "model": 1040,
+      "animation": 3025,
+      "start": 1.399999976158142,
+      "end": 1.5333333015441895,
+      "response": "jump",
+      "attack_params": [
+        10400100
+      ]
+    },
+    {
+      "model": 1040,
+      "animation": 3029,
+      "start": 1.0,
+      "end": 1.0666667222976685,
+      "response": "jump",
+      "attack_params": [
+        10400100
+      ]
+    },
+    {
+      "model": 1040,
+      "animation": 3055,
+      "start": 2.299999952316284,
+      "end": 2.366666555404663,
+      "response": "jump",
+      "attack_params": [
+        10400100
+      ]
+    },
+    {
+      "model": 1050,
+      "animation": 3017,
+      "start": 1.1666666269302368,
+      "end": 1.2999999523162842,
+      "response": "jump",
+      "attack_params": [
+        10500170
+      ]
+    },
+    {
+      "model": 1060,
+      "animation": 3015,
+      "start": 0.699999988079071,
+      "end": 0.8999999761581421,
+      "response": "jump",
+      "attack_params": [
+        10600180
+      ]
+    },
+    {
+      "model": 1060,
+      "animation": 3016,
+      "start": 1.0666667222976685,
+      "end": 1.2666666507720947,
+      "response": "jump",
+      "attack_params": [
+        10600190
+      ]
+    },
+    {
+      "model": 1070,
+      "animation": 3013,
+      "start": 1.100000023841858,
+      "end": 1.2999999523162842,
+      "response": "jump",
+      "attack_params": [
+        10700151
+      ]
+    },
+    {
+      "model": 1070,
+      "animation": 3015,
+      "start": 1.899999976158142,
+      "end": 2.0333333015441895,
+      "response": "dodge",
+      "attack_params": [
+        10700370
+      ]
+    },
+    {
+      "model": 1070,
+      "animation": 3017,
+      "start": 1.100000023841858,
+      "end": 1.2666666507720947,
+      "response": "jump",
+      "attack_params": [
+        10700150
+      ]
+    },
+    {
+      "model": 1140,
+      "animation": 3010,
+      "start": 0.699999988079071,
+      "end": 0.9333333373069763,
+      "response": "dodge",
+      "attack_params": [
+        11400190
+      ]
+    },
+    {
+      "model": 1140,
+      "animation": 3011,
+      "start": 0.7333333492279053,
+      "end": 0.9333333373069763,
+      "response": "dodge",
+      "attack_params": [
+        11400200
+      ]
+    },
+    {
+      "model": 1180,
+      "animation": 3008,
+      "start": 1.0,
+      "end": 1.1333333253860474,
+      "response": "jump",
+      "attack_params": [
+        11801121
+      ]
+    },
+    {
+      "model": 1190,
+      "animation": 100004100,
+      "start": 0.20000000298023224,
+      "end": 0.36666667461395264,
+      "response": "dodge",
+      "attack_params": [
+        11901114
+      ]
+    },
+    {
+      "model": 1200,
+      "animation": 3010,
+      "start": 1.100000023841858,
+      "end": 1.3666666746139526,
+      "response": "dodge",
+      "attack_params": [
+        12000160
+      ]
+    },
+    {
+      "model": 1200,
+      "animation": 3013,
+      "start": 1.1666666269302368,
+      "end": 1.600000023841858,
+      "response": "jump",
+      "attack_params": [
+        12000241
+      ]
+    },
+    {
+      "model": 1200,
+      "animation": 3014,
+      "start": 0.800000011920929,
+      "end": 1.0,
+      "response": "dodge",
+      "attack_params": [
+        12000160
+      ]
+    },
+    {
+      "model": 1220,
+      "animation": 3010,
+      "start": 0.7666666507720947,
+      "end": 0.8333333134651184,
+      "response": "dodge",
+      "attack_params": [
+        12200200
+      ]
+    },
+    {
+      "model": 1250,
+      "animation": 21001,
+      "start": 0.0,
+      "end": 1.1333333253860474,
+      "response": "dodge",
+      "attack_params": [
+        12500660
+      ]
+    },
+    {
+      "model": 1250,
+      "animation": 200021001,
+      "start": 0.0,
+      "end": 1.1333333253860474,
+      "response": "dodge",
+      "attack_params": [
+        12500660
+      ]
+    },
+    {
+      "model": 1250,
+      "animation": 300003004,
+      "start": 0.8999999761581421,
+      "end": 1.0666667222976685,
+      "response": "jump",
+      "attack_params": [
+        12503160
+      ]
+    },
+    {
+      "model": 1250,
+      "animation": 300003071,
+      "start": 0.9333333373069763,
+      "end": 1.100000023841858,
+      "response": "jump",
+      "attack_params": [
+        12503160
+      ]
+    },
+    {
+      "model": 1300,
+      "animation": 3005,
+      "start": 1.2333333492279053,
+      "end": 1.3333333730697632,
+      "response": "dodge",
+      "attack_params": [
+        13000800
+      ]
+    },
+    {
+      "model": 1300,
+      "animation": 3006,
+      "start": 0.6000000238418579,
+      "end": 0.699999988079071,
+      "response": "dodge",
+      "attack_params": [
+        13000800
+      ]
+    },
+    {
+      "model": 1300,
+      "animation": 3008,
+      "start": 0.06666667014360428,
+      "end": 0.1666666716337204,
+      "response": "dodge",
+      "attack_params": [
+        13000800
+      ]
+    },
+    {
+      "model": 1350,
+      "animation": 3012,
+      "start": 0.5333333611488342,
+      "end": 0.7333333492279053,
+      "response": "dodge",
+      "attack_params": [
+        13500150
+      ]
+    },
+    {
+      "model": 1350,
+      "animation": 100003015,
+      "start": 2.799999952316284,
+      "end": 3.9666666984558105,
+      "response": "dodge",
+      "attack_params": [
+        13500150
+      ]
+    },
+    {
+      "model": 1360,
+      "animation": 3016,
+      "start": 1.5333333015441895,
+      "end": 1.600000023841858,
+      "response": "dodge",
+      "attack_params": [
+        13600180
+      ]
+    },
+    {
+      "model": 1400,
+      "animation": 3083,
+      "start": 0.7333333492279053,
+      "end": 0.8999999761581421,
+      "response": "jump",
+      "attack_params": [
+        14000141
+      ]
+    },
+    {
+      "model": 1400,
+      "animation": 3087,
+      "start": 0.7333333492279053,
+      "end": 0.8999999761581421,
+      "response": "jump",
+      "attack_params": [
+        14000141
+      ]
+    },
+    {
+      "model": 1470,
+      "animation": 3002,
+      "start": 0.800000011920929,
+      "end": 0.9666666388511658,
+      "response": "jump",
+      "attack_params": [
+        14700120
+      ]
+    },
+    {
+      "model": 1470,
+      "animation": 3006,
+      "start": 1.1333333253860474,
+      "end": 1.3333333730697632,
+      "response": "jump",
+      "attack_params": [
+        14700160
+      ]
+    },
+    {
+      "model": 1470,
+      "animation": 3033,
+      "start": 1.100000023841858,
+      "end": 1.2333333492279053,
+      "response": "jump",
+      "attack_params": [
+        14700160
+      ]
+    },
+    {
+      "model": 1500,
+      "animation": 3010,
+      "start": 1.1666666269302368,
+      "end": 2.0,
+      "response": "dodge",
+      "attack_params": [
+        15000230
+      ]
+    },
+    {
+      "model": 1500,
+      "animation": 3012,
+      "start": 2.1666667461395264,
+      "end": 2.366666555404663,
+      "response": "dodge",
+      "attack_params": [
+        15000270
+      ]
+    },
+    {
+      "model": 1500,
+      "animation": 100003015,
+      "start": 0.6666666865348816,
+      "end": 1.3333333730697632,
+      "response": "dodge",
+      "attack_params": [
+        15000050
+      ]
+    },
+    {
+      "model": 5000,
+      "animation": 3010,
+      "start": 1.3666666746139526,
+      "end": 1.7333333492279053,
+      "response": "jump",
+      "attack_params": [
+        50000100,
+        50001100
+      ]
+    },
+    {
+      "model": 5000,
+      "animation": 3014,
+      "start": 1.100000023841858,
+      "end": 1.3666666746139526,
+      "response": "jump",
+      "attack_params": [
+        50000140,
+        50001140
+      ]
+    },
+    {
+      "model": 5000,
+      "animation": 3067,
+      "start": 1.1333333253860474,
+      "end": 1.5,
+      "response": "jump",
+      "attack_params": [
+        50000670,
+        50001670
+      ]
+    },
+    {
+      "model": 5000,
+      "animation": 3069,
+      "start": 2.366666555404663,
+      "end": 2.5999999046325684,
+      "response": "jump",
+      "attack_params": [
+        50000691,
+        50001691
+      ]
+    },
+    {
+      "model": 5000,
+      "animation": 100003039,
+      "start": 1.1666666269302368,
+      "end": 1.4333332777023315,
+      "response": "jump",
+      "attack_params": [
+        50000390
+      ]
+    },
+    {
+      "model": 5000,
+      "animation": 100003067,
+      "start": 1.100000023841858,
+      "end": 1.4666666984558105,
+      "response": "jump",
+      "attack_params": [
+        50000675
+      ]
+    },
+    {
+      "model": 5000,
+      "animation": 100003069,
+      "start": 2.366666555404663,
+      "end": 2.5999999046325684,
+      "response": "jump",
+      "attack_params": [
+        50000696
+      ]
+    },
+    {
+      "model": 5020,
+      "animation": 100003005,
+      "start": 0.5666666626930237,
+      "end": 0.6333333253860474,
+      "response": "dodge",
+      "attack_params": [
+        50200510
+      ]
+    },
+    {
+      "model": 5020,
+      "animation": 100003007,
+      "start": 2.1666667461395264,
+      "end": 2.2666666507720947,
+      "response": "dodge",
+      "attack_params": [
+        50200540,
+        50200911
+      ]
+    },
+    {
+      "model": 5020,
+      "animation": 100003008,
+      "start": 1.0,
+      "end": 1.100000023841858,
+      "response": "dodge",
+      "attack_params": [
+        50200550,
+        50200911
+      ]
+    },
+    {
+      "model": 5020,
+      "animation": 100003013,
+      "start": 1.1333333253860474,
+      "end": 1.3666666746139526,
+      "response": "dodge",
+      "attack_params": [
+        50200581,
+        50200912
+      ]
+    },
+    {
+      "model": 5020,
+      "animation": 100003014,
+      "start": 1.3333333730697632,
+      "end": 1.4666666984558105,
+      "response": "dodge",
+      "attack_params": [
+        50200580,
+        50200581,
+        50200911,
+        50200912
+      ]
+    },
+    {
+      "model": 5060,
+      "animation": 3004,
+      "start": 0.8666666746139526,
+      "end": 1.0,
+      "response": "jump",
+      "attack_params": [
+        50600120,
+        50601120
+      ]
+    },
+    {
+      "model": 5060,
+      "animation": 3024,
+      "start": 0.800000011920929,
+      "end": 0.9333333373069763,
+      "response": "jump",
+      "attack_params": [
+        50600120,
+        50601120
+      ]
+    },
+    {
+      "model": 5060,
+      "animation": 3037,
+      "start": 1.0,
+      "end": 1.1333333253860474,
+      "response": "dodge",
+      "attack_params": [
+        50600800,
+        50601800
+      ]
+    },
+    {
+      "model": 5060,
+      "animation": 3040,
+      "start": 0.5666666626930237,
+      "end": 0.7666666507720947,
+      "response": "dodge",
+      "attack_params": [
+        50600800,
+        50601800
+      ]
+    },
+    {
+      "model": 5060,
+      "animation": 3041,
+      "start": 0.06666667014360428,
+      "end": 0.23333333432674408,
+      "response": "dodge",
+      "attack_params": [
+        50600810,
+        50601810
+      ]
+    },
+    {
+      "model": 5060,
+      "animation": 3090,
+      "start": 0.7333333492279053,
+      "end": 0.8666666746139526,
+      "response": "jump",
+      "attack_params": [
+        50600300,
+        50601300
+      ]
+    },
+    {
+      "model": 5070,
+      "animation": 3004,
+      "start": 1.5,
+      "end": 2.1666667461395264,
+      "response": "jump",
+      "attack_params": [
+        50700130
+      ]
+    },
+    {
+      "model": 5080,
+      "animation": 3018,
+      "start": 1.399999976158142,
+      "end": 3.2333333492279053,
+      "response": "dodge",
+      "attack_params": [
+        50800180
+      ]
+    },
+    {
+      "model": 5080,
+      "animation": 3019,
+      "start": 0.0,
+      "end": 1.2333333492279053,
+      "response": "dodge",
+      "attack_params": [
+        50800180
+      ]
+    },
+    {
+      "model": 5090,
+      "animation": 3013,
+      "start": 0.9333333373069763,
+      "end": 1.2333333492279053,
+      "response": "jump",
+      "attack_params": [
+        50900130
+      ]
+    },
+    {
+      "model": 5090,
+      "animation": 3060,
+      "start": 0.9333333373069763,
+      "end": 1.2000000476837158,
+      "response": "jump",
+      "attack_params": [
+        50900600
+      ]
+    },
+    {
+      "model": 5090,
+      "animation": 3240,
+      "start": 0.9666666388511658,
+      "end": 1.7000000476837158,
+      "response": "dodge",
+      "attack_params": [
+        50900220
+      ]
+    },
+    {
+      "model": 5100,
+      "animation": 3016,
+      "start": 1.7999999523162842,
+      "end": 2.0999999046325684,
+      "response": "dodge",
+      "attack_params": [
+        51000320
+      ]
+    },
+    {
+      "model": 5100,
+      "animation": 100003005,
+      "start": 2.933333396911621,
+      "end": 3.200000047683716,
+      "response": "jump",
+      "attack_params": [
+        51000541
+      ]
+    },
+    {
+      "model": 5100,
+      "animation": 100003009,
+      "start": 1.2000000476837158,
+      "end": 1.6333333253860474,
+      "response": "jump",
+      "attack_params": [
+        51000560
+      ]
+    },
+    {
+      "model": 5100,
+      "animation": 100003013,
+      "start": 2.2666666507720947,
+      "end": 2.4666666984558105,
+      "response": "jump",
+      "attack_params": [
+        51000541
+      ]
+    },
+    {
+      "model": 5100,
+      "animation": 100003068,
+      "start": 1.1333333253860474,
+      "end": 1.6666666269302368,
+      "response": "jump",
+      "attack_params": [
+        51000560
+      ]
+    },
+    {
+      "model": 5400,
+      "animation": 3005,
+      "start": 1.1333333253860474,
+      "end": 1.3333333730697632,
+      "response": "jump",
+      "attack_params": [
+        54000042
+      ]
+    },
+    {
+      "model": 5400,
+      "animation": 3077,
+      "start": 1.2666666507720947,
+      "end": 1.3666666746139526,
+      "response": "jump",
+      "attack_params": [
+        54000051
+      ]
+    },
+    {
+      "model": 5400,
+      "animation": 3104,
+      "start": 1.3333333730697632,
+      "end": 1.5333333015441895,
+      "response": "dodge",
+      "attack_params": [
+        54000280
+      ]
+    },
+    {
+      "model": 5400,
+      "animation": 100003006,
+      "start": 1.1333333253860474,
+      "end": 1.2666666507720947,
+      "response": "jump",
+      "attack_params": [
+        54000512
+      ]
+    },
+    {
+      "model": 5400,
+      "animation": 100003014,
+      "start": 1.2333333492279053,
+      "end": 1.4333332777023315,
+      "response": "jump",
+      "attack_params": [
+        54000512
+      ]
+    },
+    {
+      "model": 5400,
+      "animation": 100003039,
+      "start": 1.7666666507720947,
+      "end": 1.9666666984558105,
+      "response": "jump",
+      "attack_params": [
+        54000730
+      ]
+    },
+    {
+      "model": 5400,
+      "animation": 100003040,
+      "start": 1.7666666507720947,
+      "end": 1.9666666984558105,
+      "response": "jump",
+      "attack_params": [
+        54000730
+      ]
+    },
+    {
+      "model": 7000,
+      "animation": 3005,
+      "start": 1.0,
+      "end": 1.1333333253860474,
+      "response": "jump",
+      "attack_params": [
+        70000131
+      ]
+    },
+    {
+      "model": 7000,
+      "animation": 3018,
+      "start": 0.6333333253860474,
+      "end": 0.7666666507720947,
+      "response": "jump",
+      "attack_params": [
+        70000250
+      ]
+    },
+    {
+      "model": 7000,
+      "animation": 3019,
+      "start": 0.6333333253860474,
+      "end": 0.7666666507720947,
+      "response": "jump",
+      "attack_params": [
+        70000260
+      ]
+    },
+    {
+      "model": 7000,
+      "animation": 3021,
+      "start": 1.3666666746139526,
+      "end": 1.5,
+      "response": "dodge",
+      "attack_params": [
+        70000300
+      ]
+    },
+    {
+      "model": 7000,
+      "animation": 3023,
+      "start": 1.2000000476837158,
+      "end": 1.3333333730697632,
+      "response": "jump",
+      "attack_params": [
+        70000131
+      ]
+    },
+    {
+      "model": 7000,
+      "animation": 3025,
+      "start": 1.6333333253860474,
+      "end": 1.8333333730697632,
+      "response": "jump",
+      "attack_params": [
+        70000270
+      ]
+    },
+    {
+      "model": 7100,
+      "animation": 3007,
+      "start": 1.5333333015441895,
+      "end": 1.7000000476837158,
+      "response": "jump",
+      "attack_params": [
+        71000140
+      ]
+    },
+    {
+      "model": 7100,
+      "animation": 3020,
+      "start": 1.100000023841858,
+      "end": 1.2333333492279053,
+      "response": "dodge",
+      "attack_params": [
+        71000160
+      ]
+    },
+    {
+      "model": 7100,
+      "animation": 3021,
+      "start": 0.8333333134651184,
+      "end": 2.0,
+      "response": "dodge",
+      "attack_params": [
+        71000170
+      ]
+    },
+    {
+      "model": 7100,
+      "animation": 3027,
+      "start": 0.4000000059604645,
+      "end": 0.8666666746139526,
+      "response": "dodge",
+      "attack_params": [
+        71000170
+      ]
+    },
+    {
+      "model": 7100,
+      "animation": 3032,
+      "start": 1.5666667222976685,
+      "end": 1.7333333492279053,
+      "response": "jump",
+      "attack_params": [
+        71000341
+      ]
+    },
+    {
+      "model": 7100,
+      "animation": 3048,
+      "start": 1.100000023841858,
+      "end": 1.2666666507720947,
+      "response": "jump",
+      "attack_params": [
+        71000293
+      ]
+    },
+    {
+      "model": 7100,
+      "animation": 3067,
+      "start": 1.0666667222976685,
+      "end": 1.2333333492279053,
+      "response": "jump",
+      "attack_params": [
+        71000140
+      ]
+    },
+    {
+      "model": 7110,
+      "animation": 3007,
+      "start": 1.5333333015441895,
+      "end": 1.7000000476837158,
+      "response": "jump",
+      "attack_params": [
+        71100140
+      ]
+    },
+    {
+      "model": 7110,
+      "animation": 3009,
+      "start": 0.8333333134651184,
+      "end": 2.4666666984558105,
+      "response": "dodge",
+      "attack_params": [
+        71100170
+      ]
+    },
+    {
+      "model": 7110,
+      "animation": 3021,
+      "start": 0.8333333134651184,
+      "end": 2.4666666984558105,
+      "response": "dodge",
+      "attack_params": [
+        71100170
+      ]
+    },
+    {
+      "model": 7110,
+      "animation": 3067,
+      "start": 1.0666667222976685,
+      "end": 1.2333333492279053,
+      "response": "jump",
+      "attack_params": [
+        71100140
+      ]
+    },
+    {
+      "model": 7400,
+      "animation": 3006,
+      "start": 1.0666667222976685,
+      "end": 1.2000000476837158,
+      "response": "jump",
+      "attack_params": [
+        74000060
+      ]
+    },
+    {
+      "model": 7400,
+      "animation": 3025,
+      "start": 1.7999999523162842,
+      "end": 2.0,
+      "response": "dodge",
+      "attack_params": [
+        74000250
+      ]
+    },
+    {
+      "model": 7400,
+      "animation": 3066,
+      "start": 1.100000023841858,
+      "end": 1.2000000476837158,
+      "response": "jump",
+      "attack_params": [
+        74000060
+      ]
+    }
+  ]
+}

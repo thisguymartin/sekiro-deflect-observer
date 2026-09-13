@@ -1,6 +1,6 @@
 # Cheat Engine research prototype
 
-The handover describes an existing V0.1 prototype with embedded Lua, a read-only memory observer, an external timing-history window, and synthetic-memory tests. Those files are not included here yet. This directory preserves the intended location for the original research.
+The handover claimed an existing V0.1 prototype, but that claim is unconfirmed. The user has never had the table or Lua files. The native reader is being developed from [public layout research](../../docs/reader-research.md). No earlier prototype is required. The import checklist below applies only if independently sourced research files become available later.
 
 This prototype is optional. The native proof of concept has its own [Windows build and run instructions](../../docs/windows.md) and requires no files from this directory.
 

@@ -1,4 +1,6 @@
 /target/
 /dist/
+/Mods/
+/scripts/__pycache__/
 *.log
 .DS_Store

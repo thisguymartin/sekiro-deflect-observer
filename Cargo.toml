@@ -1,10 +1,10 @@
 [package]
 name = "sekiro-deflect-observer"
-version = "0.2.0-dev"
+version = "0.6.0-preview"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT"
-description = "Experimental Sekiro overlay bootstrap; deflect-state reader pending validation"
+description = "Experimental Sekiro overhead attack cue; contact timing pending validation"
 repository = "https://github.com/thisguymartin/sekiro-deflect-observer"
 
 [lib]

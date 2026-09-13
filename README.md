@@ -1,14 +1,16 @@
 # Sekiro Deflect Observer
 
-A training-tool project intended to show the timing state created by the player's own deflect input in *Sekiro: Shadows Die Twice*.
+A training tool with a timing slider above Wolf that anticipates selected incoming attacks in *Sekiro: Shadows Die Twice*. The player presses the buttons.
 
-**Windows overlay proof of concept. Deflect detection is not implemented yet.**
+**Windows overhead cue preview. Green timing is an estimate; exact parry timing is not validated.**
 
-This checkout now contains a native Rust DLL, Windows build scripts, and a me3 launch profile. The panel displays **UNKNOWN** because no game-state reader or verified memory profile exists. It does not turn green when you press deflect.
+This checkout contains a native Rust DLL, Windows build scripts, and a me3 launch profile. Version 0.6.0-preview lowers the player-relative bar, enlarges the diamond and action label, and improves successive combo cues. Green **PARRY**, orange **DODGE** for mapped grabs, and blue **JUMP** for mapped sweeps use extracted animation events and attack parameters. Unknown responses stay unverified. See [preview scope, calculation, coverage, and limits](docs/cue-preview.md).
 
-The handover identified candidate effect `105010`. Its meaning has not been verified here. The original Cheat Engine prototype is optional research material and is not required to build or run this proof of concept.
+The data contains 2,161 phases across 54 models: 450 green estimates, 39 dodge phases, and 58 jump phases. Chained Ogre and Guardian Ape have selected mappings; this is not every enemy, attack, or form. Stricter response checks remove questionable green prompts from 0.5.0. These counts describe data, not verified gameplay support. See [the validation record](docs/validation-0.6.md).
 
-V1 observes the player's state. Incoming attack prediction belongs to a later V2. The intended tool does not automate inputs or change the deflect window.
+The handover's claim of an earlier Cheat Engine prototype is unconfirmed; the user has never had it. No prototype is required. Public source research provides the candidate layout; live validation remains pending.
+
+The requested first usable version is an overhead **parry-now cue** driven by incoming attack timing. The preview implements placement and an attack-based estimate; predicting actual player contact and verifying successful deflects remain. The optional player-effect panel is a research aid. See [the cue requirements and timing research](docs/parry-cue.md). The tool does not automate inputs or change the deflect window.
 
 ## Build and run on Windows
 
@@ -20,7 +22,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 
 Extract the ZIP created in `dist`, install [me3](https://github.com/garyttierney/me3/releases), start Steam, and double-click the extracted `observer.me3` while Sekiro is closed.
 
-The build creates `sekiro_deflect_observer.dll`. Its overlay shows that the DLL loaded and that the reader is unavailable. F8 hides or shows the panel. Close the game to stop the observer.
+The build creates `sekiro_deflect_observer.dll`. F6 lowers the bar; F7 raises it (session only). F8 hides or shows the cue; F9 toggles diagnostics. Close Sekiro fully before launching a different package; a running process retains its loaded DLL.
 
 Built packages require no Cheat Engine, Rust, Visual Studio, or Python on the player's PC. The Windows CI workflow also builds a downloadable test artifact. These are engineering test packages, not stable mod releases.
 
@@ -38,19 +40,20 @@ Start with [the native first-launch checklist](docs/windows.md#test-the-first-la
 ## Intended design
 
 ```text
-Sekiro local player state
-  -> version-gated memory reader
-  -> Unknown / Inactive / Active
-  -> timing history
-  -> local overlay
+Sekiro enemy target, attack timing, and camera
+  -> version-gated read-only observations
+  -> experimental advance response estimate
+  -> timing slider positioned above Wolf
 ```
 
-A failed or stale memory read must produce `Unknown`. Only a valid observation can produce `Inactive` or `Active`. The released observer is intended to operate without network requests.
+A failed or stale observation must suppress the parry cue. The existing diagnostic panel represents read failure as `Unknown`. The released observer is intended to operate without network requests.
 
 ## Development status
 
-Implemented in this milestone: a Rust DirectX 11 overlay using hudhook, F8 visibility, host-name validation, executable SHA-256 diagnostics, local logs, unit checks, and Windows packaging. See [the architecture](docs/architecture.md).
+Implemented: a DirectX 11 overlay, F8 visibility, executable SHA-256 gate, bounded read-only candidate traversal, stale/error handling, diagnostic transition history, timestamped sample logs, tests, and Windows packaging. See [the architecture](docs/architecture.md).
 
-Not implemented: version-sensitive game-state reading, deflect detection, timing history, metrics, and overlay settings. Executable fingerprinting is diagnostic only; it is not automatic compatibility validation. No game-memory offsets are followed.
+The preview includes bounded locked-target and animation history reads, camera projection, shared animation imports, attack-parameter response classification, and a timing slider above the player. The anchor remains a lowered standing-height approximation rather than an animated head bone. Pending: new placement verification, attack/contact timing and reach geometry, runtime behavior variation and blend handling, and successful-deflect verification. Complete-window statistics and reaction-time scores are not required. A matching executable hash does not establish gameplay correctness.
 
-Windows is the initial target. Real Sekiro gameplay, Proton, and macOS compatibility remain unverified. [Compatibility status](docs/compatibility.md) records actual evidence.
+Local analysis on 2026-09-12 successfully indexed 142 character animation archives and extracted attack event timelines from the installed game. This supplies data for deriving timings automatically rather than asking the player to chart every enemy. See [the measured findings and remaining runtime work](docs/game-file-analysis.md).
+
+Windows is the initial target. Recording 02 shows the older overlay rendering before visible contact sparks in one soldier exchange; it does not validate the new version or exact input timing. Proton and macOS remain unverified. [Compatibility status](docs/compatibility.md) records platform evidence.

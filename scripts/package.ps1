@@ -71,6 +71,11 @@ try {
 }
 finally {
     if ($staging -and (Test-Path -LiteralPath $staging)) {
+        $resolvedStaging = [System.IO.Path]::GetFullPath($staging)
+        $resolvedDist = [System.IO.Path]::GetFullPath((Join-Path $projectRoot 'dist')) + [System.IO.Path]::DirectorySeparatorChar
+        if (-not $resolvedStaging.StartsWith($resolvedDist, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Refusing to remove a staging directory outside the project dist folder.'
+        }
         Remove-Item -LiteralPath $staging -Recurse -Force
     }
     Pop-Location
