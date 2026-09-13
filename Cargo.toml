@@ -1,6 +1,6 @@
 [package]
 name = "sekiro-deflect-observer"
-version = "0.6.0-preview"
+version = "0.6.3-preview"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT"

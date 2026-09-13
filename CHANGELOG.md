@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.3-preview
+
+- Refine the reference-inspired design with a larger ivory diamond, longer needle, moving magenta pointer, brighter chevrons and tapered translucent ribbon wings.
+- Replace the action label's rounded box with outlined English text and provide clearance above the pointer. Preserve green PARRY, orange DODGE and blue JUMP.
+- Keep the functional timing lane at 360 x 12 reference pixels. Decorative wings do not widen its timing zone or change the estimates, detection, player anchor or game rules.
+
+## 0.6.2-preview
+
+- Match the supplied video's thumbnail more closely with a filled ivory diamond, thin vertical needle, soft glow, tapered timing segment and slimmer 360 x 12 track.
+- Retain English action labels and green/orange/blue response colors. Move labels clear of the taller needle.
+- Keep the 150 ms parry estimate, 300 ms dodge/jump estimate, Ogre batch reader and actual combat rules unchanged.
+- Allow the offline layout tools to write to a chosen folder, preserving earlier visual evidence.
+
+## 0.6.1-preview
+
+- Fix the Chained Ogre's neutral-only bar observed during the 0.6.0 gameplay trial: its auxiliary animation 40000 was hiding the attack in the last-entry reader.
+- Select a mapped attack from the engine's current animation submission batch. Preserve the ten-entry ring and 0x14 stride; never search previous batches for an attack. Competing attack tracks, changing bytes/boundaries and invalid reads suppress guidance.
+- Add batch/wrap/cancellation/ambiguity regression checks (35 Rust tests total) and a bounded read-only animation-track capture tool.
+- Preserve 0.6.0 recordings and package as evidence of the discovered failure. The corrected DLL requires a full game restart and a new timing trial.
+
 ## 0.6.0-preview
 
 - Lower Wolf's standing anchor from 2.15 to 1.55 world units; add F6/F7 vertical adjustment. Animated head tracking remains pending.
