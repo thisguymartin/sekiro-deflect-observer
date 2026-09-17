@@ -537,3 +537,35 @@ research rather than a blocker for this request.
   releases preserved. Remaining: restart into 0.10.0 and check actual placement,
   response transitions and appearance. Validation and preview in
   docs/validation-0.10.0.md and docs/images/0.10.0-reference-gallery.png.
+
+
+## 2026-09-17: 0.11.0 incoming response follow-up
+
+- User prioritizes bosses and missing grabs/Mikiri on smaller enemies. Reviewed
+  PID 7844's 0.10.0 render log: 967 UNKNOWN frames in 12 phase identities; the
+  stream reached 16 MiB after 846 seconds. No inference of success counts.
+- Added optional same-model NPC parameter identity and behavior-variation
+  classification, preserving fallback for unavailable/mismatched IDs. Added
+  identity to timing/native-capture ownership so changes clear old guidance.
+- Restored spear soldier Mikiri, Snake Eyes grabs, ninja warning routes and
+  Genichiro visual-effect cases. Separated three thrust activations from the
+  spanning counter dummy; excluded non-opponent object contact from timing.
+- Generated fallback: 2,112 phases, 53 models, 293 unknown. Specific variations:
+  3,730 overlapping records across 78 variations. 198 variant/phase cases that
+  overlap old UNKNOWN phases now have parameter-backed responses; not trials.
+- Added sparse alerts.csv with transitions/heartbeat, NPC identity, variation
+  and activation bounds. Its independent 16 MiB budget continues after the full
+  render log fills. Simulation retained 1,159 of 50,234 historical rows.
+- 114 Rust checks, 16 incoming Python checks, 11 legacy Python checks, timing
+  ledger check, formatting, app Clippy, MSVC release, DLL/ASI loading passed.
+  Existing vendor warnings only. Release, staged DLL and eight package content
+  hashes agree; details in dist/review-0.11.0/artifact-verification.json.
+- Launcher: Mods/SekiroDeflectObserver-0.11.0-preview/launch-observer.cmd.
+- DLL: 75d5a8646f604213962ffc52e5fabed61cbd903a2a6410dcdd5255551cf37a24.
+- ZIP: 9fa936941b5d3cbc9b667932b21ac0cf142a79b10932bb6cc17a8bd5ac4f154b.
+- Sekiro was closed when the fresh identity read was attempted. No response to
+  the optional reopen/lock-on request during this build. New runtime identity
+  and response behavior still need gameplay checks. Guardian Ape nonstandard
+  attack types and unresolved projectile/common dispatches remain unverified.
+- No restart, new injection, game/config/save/graphics edits, commit or push.
+  Earlier release folders preserved. See docs/validation-0.11.0.md.

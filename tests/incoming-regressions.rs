@@ -14,6 +14,7 @@ fn target(model: i32, animation: i32, time: f32) -> Target {
         animation_module: 0xc0000,
         handle: 0x10004001,
         model,
+        npc_param: None,
         animation: Animation {
             id: animation,
             time,
@@ -214,4 +215,66 @@ fn combo_changes_response_per_hit_and_never_skips_a_disabled_first_hit() {
     assert_eq!((next.phase, next.response), (Some(1), Response::Mikiri));
     assert_eq!(next.state, State::Incoming);
     assert!(next.press.is_none());
+}
+
+#[test]
+fn identified_spear_uses_three_real_hit_windows_and_never_borrows_other_npc() {
+    let mut engine = Engine::default();
+    let mut spear = target(1010, 200003008, 0.5);
+    spear.npc_param = Some(10100200);
+    engine.observe(Duration::from_millis(1000), Some(&spear));
+    let first = engine.incoming(Duration::from_millis(1000), [true; 3], true);
+    assert_eq!(first.response, Response::Mikiri);
+    assert_eq!(first.phase, Some(0));
+    assert!((first.activation.unwrap().end - 1.333333).abs() < 0.00001);
+    spear.animation.time = 1.35;
+    spear.captured_at = Some(Duration::from_millis(1016));
+    engine.observe(Duration::from_millis(1016), Some(&spear));
+    let second = engine.incoming(Duration::from_millis(1016), [true; 3], true);
+    assert_eq!(
+        (second.phase, second.state, second.response),
+        (Some(1), State::Incoming, Response::Mikiri)
+    );
+    // Wrong-model or unknown NPC IDs cannot select the spear-specific table.
+    for npc in [None, Some(-1), Some(15500000), Some(10100100)] {
+        spear.npc_param = npc;
+        spear.captured_at = Some(Duration::from_millis(1032));
+        engine.observe(Duration::from_millis(1032), Some(&spear));
+        assert_ne!(
+            engine
+                .incoming(Duration::from_millis(1032), [true; 3], true)
+                .response,
+            Response::Mikiri
+        );
+    }
+}
+
+#[test]
+fn verified_visual_effects_do_not_hide_boss_attacks_or_ninja_mikiri() {
+    for (model, animation, response) in [
+        (7100, 3026, Response::Parry),
+        (7110, 3044, Response::Jump),
+        (1400, 3005, Response::Mikiri),
+    ] {
+        let mut engine = Engine::default();
+        engine.observe(
+            Duration::from_millis(1000),
+            Some(&target(model, animation, 0.1)),
+        );
+        assert_eq!(
+            engine
+                .incoming(Duration::from_millis(1000), [true; 3], true)
+                .response,
+            response
+        );
+    }
+}
+
+#[test]
+fn gyoubu_object_contact_does_not_show_a_false_unknown_attack() {
+    let mut engine = Engine::default();
+    engine.observe(Duration::from_millis(1000), Some(&target(5080, 5010, 0.1)));
+    let decision = engine.incoming(Duration::from_millis(1000), [true; 3], true);
+    assert_eq!(decision.state, State::Neutral);
+    assert!(decision.activation.is_none());
 }

@@ -25,6 +25,7 @@ pub(super) struct RenderSample {
     pub status: &'static str,
     pub handle: u32,
     pub model: i32,
+    pub npc_param: Option<i32>,
     pub animation: i32,
     pub animation_time: f32,
     pub sequence: i32,
@@ -133,6 +134,13 @@ impl RenderSample {
             number(d.reach.map(|r| r.facing_length).filter(|v| v.is_finite())),
             number(d.reach.and_then(|r| r.facing_cosine)),
             d.reach.map_or("", |r| r.reason).into(),
+            self.npc_param.map_or(String::new(), |v| v.to_string()),
+            self.npc_param
+                .and_then(|npc| crate::incoming::npc_variation(self.model, npc))
+                .map_or(String::new(), |v| v.to_string()),
+            number(d.activation.map(|p| p.start)),
+            number(d.activation.map(|p| p.end)),
+            d.progress.to_string(),
         ]);
         fields
             .iter()
@@ -277,6 +285,7 @@ pub(super) struct Diagnostics {
     pub log_ok: Arc<AtomicBool>,
     pub cue_log_ok: Arc<AtomicBool>,
     pub render_log_ok: Arc<AtomicBool>,
+    pub alert_log_ok: Arc<AtomicBool>,
     pub render_dropped: Arc<std::sync::atomic::AtomicU64>,
     render_tx: SyncSender<RenderSample>,
     stop: Arc<AtomicBool>,
@@ -307,6 +316,7 @@ impl Diagnostics {
         let log_ok = Arc::new(AtomicBool::new(true));
         let cue_log_ok = Arc::new(AtomicBool::new(true));
         let render_log_ok = Arc::new(AtomicBool::new(true));
+        let alert_log_ok = Arc::new(AtomicBool::new(true));
         let render_dropped = Arc::new(std::sync::atomic::AtomicU64::new(0));
         let (render_tx, render_rx) = mpsc::sync_channel::<RenderSample>(512);
         let epoch = Instant::now();
@@ -316,9 +326,11 @@ impl Diagnostics {
         let shared_cue = Arc::clone(&cue_state);
         let cue_file = File::create(super::log_path()?.with_extension("cue.csv"))?;
         let render_file = File::create(super::log_path()?.with_extension("render.csv"))?;
+        let alert_file = File::create(super::log_path()?.with_extension("alerts.csv"))?;
         let event_file = File::create(super::log_path()?.with_extension("events.csv"))?;
         let cue_logging_ok = Arc::clone(&cue_log_ok);
         let render_logging_ok = Arc::clone(&render_log_ok);
+        let alert_logging_ok = Arc::clone(&alert_log_ok);
         let epoch_unix_us = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -329,6 +341,8 @@ impl Diagnostics {
             let mut log = BufWriter::new(file);
             let mut cue_log = BufWriter::new(cue_file);
             let mut render_log = BufWriter::new(render_file);
+            let mut alert_log = BufWriter::new(alert_file);
+            let mut alert_sampler = crate::alert_log::Sampler::default();
             let mut event_log = BufWriter::new(event_file);
             let mut event_tracker = crate::attack_events::Tracker::default();
             let event_header = format!("# dll_sha256={dll_hash}; executable_sha256={hash}; version={}; epoch_unix_us={epoch_unix_us}; evidence=animation_time_crossing_not_contact\nat_us,capture_source,handle,model,animation_id,event,phase_time,observed_animation_time,player_instance,animation_module,owner_generation,trigger_observation_id,trigger_capture_id,trigger_capture_us,reader_stage\n",env!("CARGO_PKG_VERSION"));
@@ -336,6 +350,10 @@ impl Diagnostics {
             let mut event_logging = event_log.write_all(event_header.as_bytes()).is_ok();
             let incoming_data_hash = crate::identity::sha256(&mut &include_bytes!("../incoming_attacks.rs")[..]).unwrap();
             let render_header = format!("# dll_sha256={dll_hash}; executable_sha256={hash}; data_sha256={}; version={}; epoch_unix_us={epoch_unix_us}; incoming_data_sha256={incoming_data_hash}; evidence=draw_submission_not_present_or_contact\nat_us,frame,status,handle,model,animation_id,animation_time,sequence,sample_age_ms,anchor_x,anchor_y,state,response,occurrence,phase,contact_start,contact_end,press_start,press_end,preferred,calibrated,rate,capture_age_ms,pulse_emitted,pulse,reason,projected_animation_time,anchor_mode,display_mode,surface_width,surface_height,viewport,captured_at_us,observed_at_us,observation_id,read_capture_id,read_source,decision_capture_id,decision_source,read_finished_us,published_us,owner_generation,render_generation,invalidated_us,hidden_submission_delay_us,profile_evidence,profile_scope,profile_trials_successes_failures,visible_presentation,actual_input,contact_observation,deflect_result,cue_bounds,coarse_distance,coarse_distance_limit,vertical_delta,facing_length,facing_cosine,reach_reason\n",crate::identity::sha256(&mut &include_bytes!("../attack_timings.rs")[..]).unwrap(),env!("CARGO_PKG_VERSION"));
+            let render_header = render_header.trim_end().to_string() + ",npc_param_id,behavior_variation,activation_start,activation_end,phase_progress\n";
+            let alert_header = "# sampling=received_decision_transitions_and_1s_heartbeat; not_every_frame\n".to_string() + &render_header;
+            let mut alert_written = alert_header.len() as u64;
+            let mut alert_logging = alert_log.write_all(alert_header.as_bytes()).is_ok();
             let mut render_written = render_header.len() as u64;
             let mut render_logging = render_log.write_all(render_header.as_bytes()).is_ok();
             let cue_header = format!("# dll_sha256={dll_hash}; version={}; executable_sha256={hash}; epoch_unix_us={epoch_unix_us}; timing=activation_estimate; contact=unvalidated\nstart_us,end_us,handle,model,animation_id,animation_time,sequence,activation_only_estimate,reason,stage,lock_enabled,lock_points,point_selected,animation_error,observation_id,capture_id,capture_source,captured_at_us,published_us,owner_generation\n", env!("CARGO_PKG_VERSION"));
@@ -346,6 +364,7 @@ impl Diagnostics {
             logging.store(log.write_all(header.as_bytes()).is_ok(), Ordering::Relaxed);
             let _ = cue_log.flush();
             let _ = render_log.flush();
+            let _ = alert_log.flush();
             let _ = log.flush();
             let base = unsafe { GetModuleHandleW(std::ptr::null()) } as usize;
             let mut last_flush = Instant::now();
@@ -380,7 +399,7 @@ impl Diagnostics {
                     target.metadata.read_start=at;
                     target.metadata.read_finished=cue_finished;
                 }
-                let owner=cue_result.as_ref().ok().and_then(Option::as_ref).filter(|t|t.animation_error.is_none()).map(|t|(t.player_instance,t.animation_module,t.handle,t.model,t.animation.id));
+                let owner=cue_result.as_ref().ok().and_then(Option::as_ref).filter(|t|t.animation_error.is_none()).map(|t|(t.player_instance,t.animation_module,t.handle,t.model,t.animation.id,t.npc_param));
                 if owner!=previous_owner { worker_gate.invalidate(cue_finished); previous_owner=owner; }
                 let mut published_metadata=cue::CaptureMetadata {observation_id,read_start:at,read_finished:cue_finished,source:"invalid_or_missing",..Default::default()};
                 // Publish before ALL configuration, event/log formatting and file work.
@@ -426,14 +445,28 @@ impl Diagnostics {
                     } else { cue_written += cue_row.len() as u64; }
                 }
                 for submitted in render_rx.try_iter().take(512) {
-                    if render_logging && record {
+                    if record {
+                        let sparse = alert_logging && alert_sampler.record(submitted.at, crate::alert_log::Key {
+                            handle:submitted.handle,model:submitted.model,npc_param:submitted.npc_param,
+                            animation:submitted.animation,occurrence:submitted.decision.occurrence,
+                            phase:submitted.decision.phase,state:submitted.decision.state,response:submitted.decision.response,
+                            status:submitted.status,submitted:submitted.position.is_some(),generation:submitted.generation,
+                        });
+                        if !render_logging && !sparse {continue;}
                         let row = submitted.row();
-                        if render_written + row.len() as u64 > LOG_LIMIT || render_log.write_all(row.as_bytes()).is_err() { render_logging=false; }
-                        else { render_written += row.len() as u64; }
+                        if render_logging {
+                            if render_written + row.len() as u64 > LOG_LIMIT || render_log.write_all(row.as_bytes()).is_err() { render_logging=false; }
+                            else { render_written += row.len() as u64; }
+                        }
+                        if sparse {
+                            if alert_written + row.len() as u64 > LOG_LIMIT || alert_log.write_all(row.as_bytes()).is_err() { alert_logging=false; }
+                            else { alert_written += row.len() as u64; }
+                        }
                     }
                 }
                 cue_logging_ok.store(cue_logging, Ordering::Relaxed);
                 render_logging_ok.store(render_logging, Ordering::Relaxed);
+                alert_logging_ok.store(alert_logging, Ordering::Relaxed);
                 let started = Instant::now();
                 let result = reader::observe(&LocalMemory { started }, base, &hash);
                 let sample = Sample { started: started.duration_since(epoch), finished: epoch.elapsed(), result };
@@ -456,6 +489,7 @@ impl Diagnostics {
                     if log.flush().is_err() { logging.store(false, Ordering::Relaxed); }
                     if cue_log.flush().is_err() { cue_logging=false; }
                     if render_log.flush().is_err() { render_logging=false; }
+                    if alert_log.flush().is_err() { alert_logging=false; }
                     if event_log.flush().is_err() { event_logging=false; }
                     last_flush = Instant::now();
                 }
@@ -488,6 +522,7 @@ impl Diagnostics {
             let _ = log.flush();
             let _ = cue_log.flush();
             let _ = render_log.flush();
+            let _ = alert_log.flush();
             let _ = event_log.flush();
         })?;
         Ok(Self {
@@ -502,6 +537,7 @@ impl Diagnostics {
             log_ok,
             cue_log_ok,
             render_log_ok,
+            alert_log_ok,
             render_dropped,
             render_tx,
             stop,

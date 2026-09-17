@@ -25,6 +25,7 @@ struct Owner {
     module: usize,
     handle: u32,
     model: i32,
+    npc_param: Option<i32>,
 }
 #[derive(Clone, Copy)]
 struct Snapshot {
@@ -194,6 +195,7 @@ pub fn apply(target: Option<&mut cue::Target>, epoch: Instant) -> &'static str {
         module: t.animation_module,
         handle: t.handle,
         model: t.model,
+        npc_param: t.npc_param,
     });
     let snapshot = state.select(owner, Instant::now());
     let Some(target) = target else {
@@ -264,6 +266,7 @@ mod tests {
             animation_module: 2,
             handle: 3,
             model: 1010,
+            npc_param: None,
             animation: cue::Animation {
                 id: 3000,
                 previous: 0.5,
@@ -304,6 +307,32 @@ mod tests {
         assert!(install("unknown").is_err());
     }
     #[test]
+    fn changing_or_losing_npc_identity_discards_pre_change_capture() {
+        let now = Instant::now();
+        let owner = Owner {
+            player: 1,
+            module: 2,
+            handle: 3,
+            model: 1010,
+            npc_param: Some(10100200),
+        };
+        for npc_param in [None, Some(10100100)] {
+            let mut state = State {
+                owner: Some(owner),
+                generation: 1,
+                latest: Some(Snapshot {
+                    id: 1,
+                    at: now,
+                    frame: Err(reader::ReadError::InvalidAnimation),
+                }),
+            };
+            assert!(state
+                .select(Some(Owner { npc_param, ..owner }), now)
+                .is_none());
+            assert!(state.select(Some(owner), now).is_none());
+        }
+    }
+    #[test]
     fn captures_expire_and_cannot_cross_target_or_lock_changes() {
         let now = Instant::now();
         let owner = Owner {
@@ -311,6 +340,7 @@ mod tests {
             module: 0x10000,
             handle: 1,
             model: 1020,
+            npc_param: None,
         };
         let mut state = State {
             owner: Some(owner),
@@ -349,6 +379,7 @@ mod tests {
             module,
             handle: 1,
             model: 1020,
+            npc_param: None,
         });
         let address = fixture as *const () as usize;
         unsafe {

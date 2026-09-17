@@ -2,7 +2,9 @@
 
 ![Synthetic reference-style HUD states, not gameplay](docs/images/0.10.0-reference-gallery.png)
 
-**0.10.0-preview recreates the requested slim, top-center HUD:** a tapered rail,
+**0.11.0-preview improves enemy-specific alerts and combo timing.** It identifies
+NPC variants for spear Mikiri and grabs, resolves more boss visual effects, and
+keeps a sparse alert log for longer fights. The top HUD retains its tapered rail,
 green parry lead-in, white diamond and red strike emblem. The diamond travels
 toward the center during wind-up; white/red marks the active parryable attack
 phase, not confirmed sword contact or a successful deflect. DODGE, JUMP, MIKIRI,
@@ -16,7 +18,7 @@ LOCKED stays visible while the target is fresh but attack timing is unavailable.
 Mikiri hints assume the skill is unlocked. Set `mikiri = false` in the config
 if it is unavailable; supported thrusts then show PARRY. Unknown responses stay
 explicitly UNKNOWN. See [classification evidence and limits](docs/incoming-attacks.md)
-and [current build checks](docs/validation-0.10.0.md).
+and [current build checks](docs/validation-0.11.0.md).
 
 0.9.1 fixes a reproduced DX11 graphics-state leak in the overlay renderer.
 Drawing uses a separate command list with full host-state restoration. The
@@ -25,7 +27,7 @@ reported scene tint still requires an in-game comparison after a full restart.
 ## Install and run on Windows
 
 1. Close Sekiro completely. Extract the newly built
-   `SekiroDeflectObserver-0.10.0-preview-windows-x64.zip` into its own folder.
+   `SekiroDeflectObserver-0.11.0-preview-windows-x64.zip` into its own folder.
 2. Install [me3](https://github.com/garyttierney/me3/releases), keep Steam running,
    then double-click `observer.me3` or run `launch-observer.cmd`.
 3. Load a save, lock onto a living enemy, and look below the enemy's top posture bar.
@@ -91,13 +93,16 @@ On this machine `python3` is unavailable and the default GNU target lacks
 
 ## Evidence and limits
 
-Incoming data covers **2,161 phases across 54 models**: 1,673 parry, 40 dodge,
-56 jump, 63 Mikiri, 16 no-parry and 313 unknown. These are parameter-backed
-classifications, not successful gameplay trials or complete boss/form coverage.
+The fallback table covers **2,112 phases across 53 models**: 1,632 parry, 41 dodge,
+59 jump, 66 Mikiri, 21 no-parry and 293 unknown. A further 3,730 entries describe
+78 specific NPC behavior variations. These overlap the fallback entries; they
+are not additional unique moves or gameplay successes. Live variant identity
+and responses still need an in-game check; complete boss/form coverage is not claimed.
 
 The generator resolves harmless warning effects and explicit Mikiri detection
 hitboxes without treating them as conflicting damaging attacks. Conflicting
-behavior variants and unresolved projectile routes stay UNKNOWN. Exact sources
+behavior variants stay UNKNOWN when NPC identity is unavailable. Unresolved
+projectile routes remain UNKNOWN. Exact sources
 and per-phase parameter IDs are in [incoming coverage](docs/incoming-coverage.json).
 
 The DLL does not press buttons, change combat rules, or require telemetry/accounts.

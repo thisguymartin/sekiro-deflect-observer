@@ -15,6 +15,7 @@ fn target(time: f32) -> Target {
         animation_module: 0xc0000,
         handle: 0x10004001,
         model: 1010,
+        npc_param: None,
         animation: Animation {
             id: 3000,
             previous: time - 0.016,

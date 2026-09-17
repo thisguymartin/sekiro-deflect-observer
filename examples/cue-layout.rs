@@ -285,6 +285,7 @@ fn synthetic(
         animation_module: 2,
         handle: 3,
         model,
+        npc_param: None,
         animation: cue::Animation {
             id: animation,
             previous: time - 0.048,

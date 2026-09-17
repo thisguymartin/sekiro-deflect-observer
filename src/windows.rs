@@ -291,6 +291,7 @@ impl ImguiRenderLoop for Observer {
                     } else if let Some(target) = target.as_ref() {
                         submitted.handle = target.handle;
                         submitted.model = target.model;
+                        submitted.npc_param = target.npc_param;
                         submitted.animation = target.animation.id;
                         submitted.animation_time = target.animation.time;
                         submitted.sequence = target.animation.sequence;
@@ -506,6 +507,10 @@ impl ImguiRenderLoop for Observer {
                 if !self.diagnostics.log_ok.load(Ordering::Relaxed) {
                     ui.text("Sample logging stopped (size limit or I/O error).");
                 }
+                ui.text(format!(
+                    "Sparse alert logging: {}",
+                    self.diagnostics.alert_log_ok.load(Ordering::Relaxed)
+                ));
                 ui.separator();
                 ui.text("Recent observations (seconds since reader start)");
                 for (at, state) in &transitions {

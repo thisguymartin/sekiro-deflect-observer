@@ -245,6 +245,8 @@ pub struct Target {
     pub animation_module: usize,
     pub handle: u32,
     pub model: i32,
+    /// Stable NPC parameter identity, independently checked against this model.
+    pub npc_param: Option<i32>,
     pub animation: Animation,
     pub position: [f32; 3],
     pub anchor: [f32; 3],
@@ -358,6 +360,13 @@ pub fn observe_traced(
     }
     trace.stage = "animation";
     let model = integer(m, actor, 0x68)? / 10000;
+    // ChrIns -> ChrRes (+30) -> NpcParam ID (+628), from the inspected SDT
+    // structure. Optional: an unavailable/unmapped identity keeps the strict
+    // all-variants response. Never derive a weapon from animation-bank digits.
+    let npc_identity = pointer(m, actor, 0x30).ok().and_then(|resource| {
+        let npc = integer(m, resource, 0x628).ok()?;
+        crate::incoming::npc_variation(model, npc).map(|_| (resource, npc))
+    });
     let mut frame = animation_for_model(m, animation_module, model);
     if frame == Err(ReadError::ChangedDuringRead) {
         frame = animation_for_model(m, animation_module, model);
@@ -431,6 +440,11 @@ pub fn observe_traced(
     } else {
         "locked"
     };
+    if let Some((resource, npc)) = npc_identity {
+        if pointer(m, actor, 0x30) != Ok(resource) || integer(m, resource, 0x628) != Ok(npc) {
+            return Err(ReadError::ChangedDuringRead);
+        }
+    }
     Ok(Some(Target {
         metadata: CaptureMetadata {
             source: "poll",
@@ -441,6 +455,7 @@ pub fn observe_traced(
         animation_module,
         handle,
         model,
+        npc_param: npc_identity.map(|(_, npc)| npc),
         animation,
         position,
         anchor,
@@ -760,6 +775,7 @@ mod tests {
             animation_module: 0xc0000,
             handle: 0x10004001,
             model: 1010,
+            npc_param: None,
             animation: Animation {
                 id: 3000,
                 previous: 0.59,
@@ -1002,6 +1018,7 @@ mod tests {
         calls: Cell<usize>,
         change_head: bool,
         change_owner: bool,
+        change_npc: Cell<bool>,
     }
     impl Fixture {
         fn put(&mut self, at: usize, value: &[u8]) {
@@ -1099,6 +1116,11 @@ mod tests {
     impl Memory for Fixture {
         fn read(&self, at: usize, output: &mut [u8]) -> Result<(), ReadError> {
             self.calls.set(self.calls.get() + 1);
+            if at == 0x150000 + 0x628 && self.change_npc.get() {
+                self.change_npc.set(false);
+                output.copy_from_slice(&10100200_i32.to_le_bytes());
+                return Ok(());
+            }
             if self.change_owner && at == 0x140000000 + 0x3d7a1e0 && self.calls.get() > 1 {
                 output.copy_from_slice(&0x21000u64.to_le_bytes());
                 return Ok(());
@@ -1115,6 +1137,49 @@ mod tests {
             }
             Ok(())
         }
+    }
+    #[test]
+    fn npc_identity_requires_matching_model_stable_owner_and_mapped_parameter() {
+        let mut f = Fixture::target_layout();
+        // Optional failures retain the all-variants lookup, not a guessed form.
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            None
+        );
+        f.ptr(0xa0000 + 0x30, 0x150000);
+        f.int(0x150000 + 0x628, 10100200);
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            Some(10100200)
+        );
+        f.int(0x150000 + 0x628, 15500000);
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            None
+        );
+        f.int(0x150000 + 0x628, -1);
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            None
+        );
+        f.int(0x150000 + 0x628, 10100000);
+        f.change_npc.set(true);
+        assert!(matches!(
+            observe(&f, 0x140000000, RESEARCH_HASH),
+            Err(ReadError::ChangedDuringRead)
+        ));
     }
     #[test]
     fn latest_ring_entry_wraps_and_rejects_changes_and_unreadable_frames() {

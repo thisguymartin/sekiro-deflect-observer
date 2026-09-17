@@ -36,6 +36,8 @@ pub struct Decision {
     pub response: Response,
     pub occurrence: u64,
     pub phase: Option<u32>,
+    /// Extracted incoming activation window in animation seconds, not contact.
+    pub activation: Option<Interval>,
     pub press: Option<Interval>,
     pub contact: Option<Interval>,
     pub preferred: Option<f32>,
@@ -140,7 +142,7 @@ pub struct Engine {
     last_decision: Option<(u32, f32, Duration)>,
     pulse_started: Option<(u32, Duration)>,
 }
-type Owner = (usize, usize, u32, i32, i32);
+type Owner = (usize, usize, u32, i32, i32, Option<i32>);
 impl Engine {
     fn break_continuity(&mut self) {
         self.occurrence = self.occurrence.wrapping_add(1);
@@ -179,6 +181,7 @@ impl Engine {
             target.handle,
             target.model,
             target.animation.id,
+            target.npc_param,
         );
         let source = target.captured_at.unwrap_or(at);
         if source > at {

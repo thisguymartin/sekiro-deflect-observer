@@ -1,4 +1,4 @@
-Sekiro Deflect Observer 0.10.0-preview
+Sekiro Deflect Observer 0.11.0-preview
 Native Windows x64 incoming attack response HUD
 
 This build fixes a reproduced DX11 graphics-state leak by drawing through a
@@ -43,10 +43,12 @@ Appearance, safe-area placement, response enables and bounded latency settings
 can change without rebuilding. Lock/hash/freshness/uncertainty gates cannot.
 
 CLASSIFICATION AND LIMITS
-Incoming mode covers 2,161 phases across 54 models: 1,673 parry, 40 dodge,
-56 jump, 63 Mikiri, 16 no-parry and 313 unknown. These are data classifications,
-not unique moves or gameplay-validated success counts. Unknown variants and
-unresolved projectiles remain unknown. No automatic retaliation is provided.
+The fallback table has 2,112 phases on 53 models; 293 remain unknown. Specific
+NPC behavior variations add weapon-aware choices, including soldier Mikiri and
+Snake Eyes grabs. Missing/mismatched NPC identity keeps the fallback table.
+These are data classifications, not unique moves or validated success counts.
+Some Guardian Ape event types and real/unresolved projectiles remain unknown.
+No automatic retaliation is provided. This build still needs live verification.
 
 The new top-center rail uses local shadows with no large enclosing panel.
 Untouched 0.8.0 layout defaults migrate atomically. Custom layouts are preserved.
@@ -60,8 +62,10 @@ gameplay state. The supported executable SHA256 is:
 LOGS AND REMOVAL
 Logs are under %LOCALAPPDATA%/SekiroDeflectObserver. Startup identifies actual DLL
 and executable hashes; bounded CSVs record observations, animation crossings and
-draw decisions. Each CSV stops at 16 MiB. F9 shows dropped records and config
-errors. Draw submission and candidate effect 105010 do not prove presentation,
+draw decisions. Each CSV stops at 16 MiB. The additional alerts.csv records received decision
+changes plus a one-second heartbeat, continuing after full-frame logging fills.
+It includes NPC/variation IDs and activation boundaries for later diagnosis.
+F9 shows logging status, dropped records and config errors. Draw submission and candidate effect 105010 do not prove presentation,
 actual input, contact or successful deflection. Supply those in a trial record.
 
 Close the game to unload. A running process keeps its old DLL until full restart.

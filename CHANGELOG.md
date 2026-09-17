@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0-preview - 2026-09-17 (enemy variants and incoming timing)
+
+- Add optional, coherent NPC parameter identification for weapon-specific
+  responses. Missing or mismatched identities retain the conservative fallback.
+  Spear soldier Mikiri and Snake Eyes grab responses no longer depend on
+  agreement with unrelated sword/gunner variants.
+- Resolve verified dummy-0 warning carriers and payload-free visual bullets,
+  restoring ninja Mikiri and Genichiro responses. Unknown or chained payloads
+  remain unverified; no new event-dispatch hook or input automation.
+- Exclude non-opponent hitboxes, throw damage and harmless Mikiri detection
+  markers from incoming timing geometry. Separate spear combo hits and stop
+  presenting Gyoubu's object-destruction contact as an incoming attack.
+- Add a sparse alerts.csv alongside full-frame logs, with decision transitions,
+  a one-second heartbeat, NPC/variation IDs and actual activation boundaries.
+  Each file remains bounded at 16 MiB; the sparse stream outlasts frame logging.
+- Preserve the top HUD and DX11 rendering path. Automated checks establish
+  classification and timing behavior; live NPC identity/gameplay checks remain.
+
 ## 0.10.0-preview - 2026-09-17 (reference-style top HUD)
 
 - Recreate the supplied screenshots with a slim tapered rail, green parry lead-in,

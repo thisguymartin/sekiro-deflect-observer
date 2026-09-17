@@ -4,6 +4,13 @@ use crate::cue::{Response, Target};
 use crate::timing::{Decision, State};
 use std::time::Duration;
 
+pub(crate) fn npc_variation(model: i32, npc: i32) -> Option<i32> {
+    let entries = crate::incoming_attacks::NPC_VARIATIONS;
+    let index = entries.binary_search_by_key(&npc, |entry| entry.0).ok()?;
+    let variation = entries[index].1;
+    (variation / 10 == model).then_some(variation)
+}
+
 pub(crate) fn decide(
     target: &Target,
     now: Duration,
@@ -18,11 +25,15 @@ pub(crate) fn decide(
         .map_or(0.0, |at| now.saturating_sub(at).as_secs_f32() * 1000.0);
     decision.reason = "locked_no_incoming_phase";
     let entries = crate::incoming_attacks::ATTACKS;
-    let key = (target.model, target.animation.id);
-    let first = entries.partition_point(|entry| (entry.0, entry.1) < key);
-    let last = entries.partition_point(|entry| (entry.0, entry.1) <= key);
+    let variation = target
+        .npc_param
+        .and_then(|npc| npc_variation(target.model, npc))
+        .unwrap_or(-1);
+    let key = (target.model, variation, target.animation.id);
+    let first = entries.partition_point(|entry| (entry.0, entry.1, entry.2) < key);
+    let last = entries.partition_point(|entry| (entry.0, entry.1, entry.2) <= key);
     let mut previous_end = 0.0_f32;
-    for (phase, &(_, _, start, end, code)) in entries[first..last].iter().enumerate() {
+    for (phase, &(_, _, _, start, end, code)) in entries[first..last].iter().enumerate() {
         if time >= end {
             previous_end = end;
             continue;
@@ -54,6 +65,7 @@ pub(crate) fn decide(
         };
         decision.response = response;
         decision.phase = Some(phase as u32);
+        decision.activation = Some(crate::timing::Interval { start, end });
         // Wind-up reaches the center gate at activation. Active progress is a
         // separate phase fraction, never a measured collision or input result.
         decision.progress = if time < start {
