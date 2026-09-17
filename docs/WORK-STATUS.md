@@ -619,3 +619,14 @@ research rather than a blocker for this request.
   remains available and is labeled as historical.
 - The 0.12.1 validation record and local artifact hashes still apply. PR CI is
   separate from those local checks; live gameplay verification remains pending.
+
+## 2026-09-17: PR 3 gameplay snapshots
+
+- Opened PR 3 against main, then added three frames requested by the user from
+  the September 16 General Kawarada and September 17 Lady Butterfly recordings.
+- Published the earlier READY rail and larger PARRY/DODGE boxes with exact frame
+  timestamps, source/image hashes and a documented black-side-padding crop.
+  Captured game pixels are unchanged; no generated scene or HUD was substituted.
+- The recordings do not establish a build identity. Captions distinguish this
+  historical UI evidence from current synthetic previews and the pending live
+  checks for 0.12.1 practice. Runtime/build/test files are unchanged.

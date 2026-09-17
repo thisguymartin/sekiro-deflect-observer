@@ -50,3 +50,12 @@ Sekiro was not running during verification. These tests prove the checked code
 paths and synthetic behavior, not live slowdown, reactions or cleanup. Refer to
 [feature boundaries](feature-boundaries.md) for future edits and
 [practice limitations](enemy-speed-practice.md) for the remaining gameplay trial.
+
+## Historical video evidence
+
+The [visual gallery](screenshots.md#user-provided-gameplay-recordings---september-16-17-2026)
+includes three timestamped frames from the user's September 16-17 recordings:
+the earlier General Kawarada rail and the reported Lady Butterfly PARRY/DODGE
+boxes. Source/image hashes and the side-padding crop are recorded. Their build
+versions are unverified, so these images document the earlier UI and reported
+problem; they add no completed 0.12.1 gameplay checks to the list above.

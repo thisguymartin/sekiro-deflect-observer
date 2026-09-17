@@ -1,6 +1,6 @@
 # Versioned visuals for the beta
 
-## Current 0.12.1 practice and independent hints ? synthetic previews
+## Current 0.12.1 practice and independent hints - synthetic previews
 
 ![0.12.1 practice gallery, offline render](images/0.12.1-practice-gallery.png)
 
@@ -23,7 +23,61 @@ python scripts/render-cue-layout.py dist/review-0.12.1/layout/practice
 python scripts/render-cue-layout.py dist/review-0.12.1/layout/no-hints
 ```
 
-The historical reproduction commands below require their matching older source.
+## User-provided gameplay recordings - September 16-17, 2026
+
+These frames document the earlier on-screen behavior that prompted the UI changes.
+The recording filenames establish their dates, but the clips do not identify a
+DLL version or commit. They are historical gameplay evidence, not a live trial
+of the current 0.12.1 UI, attack classification or speed practice. Compare them
+with the explicitly synthetic current previews above; this is not a controlled
+before/after gameplay comparison.
+
+### Earlier rail during the General Naomori Kawarada fight
+
+![User recording: READY caption and green rail segment during the General Naomori Kawarada fight](images/2026-09-16-user-general-green.png)
+
+Source: `Sekiro 2026-09-16 11-34-12.mp4`, frame at **00:31.011467**.
+The earlier rail appears across the middle of the scene, with a READY caption,
+diamond and green segment. This shows the earlier design the user preferred;
+the frame does not establish a successful deflect or a correct timing window.
+
+### Reported larger overlay during the Lady Butterfly fight
+
+![User recording: green PARRY box near Wolf's lower posture bar during Lady Butterfly](images/2026-09-17-user-butterfly-parry.png)
+
+Source: `Sekiro 2026-09-17 10-33-30.mp4`, frame at **00:11.004067**.
+The green PARRY box sits near Wolf's lower posture bar and overlaps the subtitle
+area. This records the larger lower-screen design reported by the user; it does
+not show the current compact top HUD.
+
+![User recording: orange DODGE box during Lady Butterfly](images/2026-09-17-user-butterfly-dodge.png)
+
+Same source, frame at **00:21.007767**. An orange DODGE label is visible. The
+snapshot establishes that the prompt appeared, not that the attack was correctly
+classified or that a dodge succeeded. Static frames cannot verify an 80% attack
+rate, Wolf's unchanged speed, or restoration after a toggle or loss of focus.
+
+### Extraction and provenance
+
+The source videos remain local. The published PNGs retain the captured game
+pixels at 1280 x 720: only the encoded black side padding was cropped from the
+2560 x 720 video (`crop=1280:720:640:0`). There is no resizing, color correction,
+annotation, generated artwork or replacement HUD in these gameplay frames.
+[Frame provenance](images/user-recording-frames.json) records source/image SHA-256
+hashes, the selected presentation timestamps and the crop. FFmpeg's normal video
+decoding was used; this is not a measurement of the game's original color output.
+
+Reproduce from the user's original recordings with FFmpeg 7.1 (select the first
+frame at or after the requested time):
+
+```powershell
+$ffmpeg = 'dist/video-tools/imageio_ffmpeg/binaries/ffmpeg-win-x86_64-v7.1.exe'
+& $ffmpeg -n -i 'C:/Users/mpati/Videos/Captures/Sekiro 2026-09-16 11-34-12.mp4' -vf 'select=gte(t\,31),crop=1280:720:640:0' -frames:v 1 -fps_mode vfr -update 1 'general-green.png'
+& $ffmpeg -n -i 'C:/Users/mpati/Videos/Captures/Sekiro 2026-09-17 10-33-30.mp4' -vf 'select=gte(t\,11),crop=1280:720:640:0' -frames:v 1 -fps_mode vfr -update 1 'butterfly-parry.png'
+& $ffmpeg -n -i 'C:/Users/mpati/Videos/Captures/Sekiro 2026-09-17 10-33-30.mp4' -vf 'select=gte(t\,21),crop=1280:720:640:0' -frames:v 1 -fps_mode vfr -update 1 'butterfly-dodge.png'
+```
+
+The historical rendering commands below require their matching older source.
 
 ## Historical 0.6.3 design - offline preview
 
