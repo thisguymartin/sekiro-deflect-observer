@@ -1,8 +1,8 @@
 //! Emit the actual ImGui draw mesh for a reproducible, synthetic visual check.
 //! No game reads, hooks, DLL loading, or input generation.
 use hudhook::imgui::{self, DrawCmd};
-pub use sekiro_deflect_observer::hud_art;
 use sekiro_deflect_observer::{config, cue, layout, timing};
+pub use sekiro_deflect_observer::{hud_art, practice};
 use std::fs::{self, File};
 use std::io::Write;
 use std::time::Duration;
@@ -12,6 +12,7 @@ mod diagnostics {
 
     #[derive(Default)]
     pub(super) struct RenderSample {
+        pub at: std::time::Duration,
         pub status: &'static str,
         pub position: Option<[f32; 2]>,
         pub decision: timing::Decision,
@@ -19,6 +20,7 @@ mod diagnostics {
         pub surface: [f32; 2],
         pub viewport: [f32; 4],
         pub bounds: Option<[f32; 4]>,
+        pub practice: super::practice::Snapshot,
     }
 }
 #[path = "../src/windows/cue_draw.rs"]
@@ -101,7 +103,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if gallery {
             config.offset_y = row as f32 * 98.0;
         }
-        let mut submitted = diagnostics::RenderSample::default();
+        let mut submitted = diagnostics::RenderSample {
+            at: target.captured_at.unwrap_or_default(),
+            ..Default::default()
+        };
+        if args.iter().any(|arg| arg == "--practice") {
+            submitted.practice = practice::Snapshot {
+                status: practice::Status::Active,
+                handle: target.handle,
+                model: target.model,
+                animation_module: target.animation_module,
+                percent: 80,
+                ..Default::default()
+            };
+        }
         cue_draw::draw(ui, &target, &decision, &config, &fonts, &mut submitted);
         measurements.push((state.to_string(), submitted));
     }

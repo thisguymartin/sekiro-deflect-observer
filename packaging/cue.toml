@@ -7,6 +7,10 @@ incoming_cues = true
 # Set false if Mikiri Counter is not unlocked; eligible thrusts then show PARRY.
 # This preference does not detect the skill or its availability in game memory.
 mikiri = true
+# F11 enables practice for this session only (starts OFF). 0.5..1.0.
+# 0.8 = 80% of the enemy's existing animation speed; Wolf is unchanged.
+# Recognized parry/thrust/sweep phases only; grabs/unknowns stay normal.
+practice_speed = 0.8
 
 # top matches the reference placement below the enemy's upper posture bar.
 # posture uses a fixed screen-space lane above Wolf's configured posture band.

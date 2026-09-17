@@ -18,6 +18,7 @@ unrelated timing, visibility and calibration settings are preserved.
 | --- | ---: | --- |
 | `incoming_cues` | true | Incoming response display; false selects legacy estimated timing |
 | `mikiri` | true | Mikiri hint assumes unlocked skill; false shows PARRY for classified thrusts |
+| `practice_speed` | 0.8 | 0.5..1.0 enemy animation multiplier; F11 enables for current session only |
 | `anchor` | `top` | `top`, `posture` or `overhead`; existing explicit anchors are preserved |
 | `parry_button` | `LB` | `LB`, `L1`, or `RMB`; label only, not binding detection |
 | `offset_x` | 0 | -480..480 reference pixels |
@@ -50,6 +51,11 @@ unrelated timing, visibility and calibration settings are preserved.
 retaining the response color, caption and marker. `parry`, `dodge`, and `jump`
 restrict supported responses. `visible`, `diagnostics`, and `diagnostic_logging`
 set the startup state for F8, F9, and bounded local logging.
+
+Practice always starts off and has no persisted enable flag. F11 toggles it;
+F8 hiding disarms it. At 1.0 the controller performs no slowdown. General log
+disable does not disable the bounded practice-write audit trail. See
+[enemy speed controls and limitations](enemy-speed-practice.md).
 
 Top mode places the center gate at `(0.5, 0.16)` of the fitted playable viewport.
 Its complete art bounds stay below the upper 9.5% HUD band. This is configured

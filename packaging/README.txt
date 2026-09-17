@@ -1,5 +1,16 @@
-Sekiro Deflect Observer 0.11.0-preview
+Sekiro Deflect Observer 0.12.0-preview
 Native Windows x64 incoming attack response HUD
+
+NEW: F11 toggles optional enemy-speed practice. Starts OFF every process.
+Eligible locked-enemy parry/thrust/sweep attacks run at 80% of existing animation
+speed; Wolf stays normal. The caption appends 80% after a checked speed write.
+PRACTICE means armed and waiting. F9 shows current speed-control status.
+Grabs, unknowns and no-parry moves stay normal. Projectile flight is not rescaled.
+Set practice_speed = 0.8 (allowed 0.5..1.0) in your local cue.toml.
+F11 off or F8 hide releases the speed override; hiding disarms practice.
+Focus/lock loss, death and attack ending also attempt ownership-checked cleanup.
+Read/write failures retry; external speed changes pause practice until rearmed.
+This is a gameplay-changing prototype and still needs live verification.
 
 This build fixes a reproduced DX11 graphics-state leak by drawing through a
 private deferred context with full host-state restoration. The reported scene
@@ -34,7 +45,8 @@ thrusts then show PARRY. The mod does not read your skill-unlock state.
 Set incoming_cues = false only to use the older estimated press-window mode.
 
 F6/F7: lower/raise 8 reference pixels and save. F8: toggle cue. F9: research panel.
-F10: reset offsets. All hotkeys require focus, ignore repeats and pass through.
+F10: reset offsets. F11: session-only practice (initially off).
+All hotkeys require focus, ignore repeats and pass through.
 Settings: %LOCALAPPDATA%/SekiroDeflectObserver/cue.toml
 The file is created with safe defaults and reloaded once per second. The included
 cue.toml is a documented copy of those defaults. Malformed reloads retain the
@@ -55,8 +67,11 @@ Untouched 0.8.0 layout defaults migrate atomically. Custom layouts are preserved
 Lost/changed targets, focus loss, hidden visibility and stale observations clear
 old guidance. Animation failure retains only neutral LOCKED for a fresh target.
 
-The observer never presses buttons or changes attack speed, deflect windows or
-gameplay state. The supported executable SHA256 is:
+The observer never presses buttons or changes Wolf's speed/deflect windows.
+F11 explicitly enables temporary enemy animation-speed writes; ordinary overlay
+operation starts with those writes off. Original speed is saved and restored
+only while the same owner/value remains valid. No game files or saves are edited.
+The supported executable SHA256 is:
 637aca527538c0ec6e1f136c8ed66046e95dfbdbb1f51926e134d9916398b856
 
 LOGS AND REMOVAL

@@ -2,7 +2,13 @@
 
 ![Synthetic reference-style HUD states, not gameplay](docs/images/0.10.0-reference-gallery.png)
 
-**0.11.0-preview improves enemy-specific alerts and combo timing.** It identifies
+**0.12.0-preview adds optional F11 enemy-speed practice, initially off.**
+Eligible locked-enemy attacks run at 80% of their existing animation speed;
+Wolf stays at normal speed. Grabs and unknown/no-parry moves remain unchanged.
+This new mode still needs live verification. See [controls and limits](docs/enemy-speed-practice.md)
+and [build checks](docs/validation-0.12.0.md).
+
+The preserved 0.11.0 baseline improves enemy-specific alerts and combo timing. It identifies
 NPC variants for spear Mikiri and grabs, resolves more boss visual effects, and
 keeps a sparse alert log for longer fights. The top HUD retains its tapered rail,
 green parry lead-in, white diamond and red strike emblem. The diamond travels
@@ -18,7 +24,7 @@ LOCKED stays visible while the target is fresh but attack timing is unavailable.
 Mikiri hints assume the skill is unlocked. Set `mikiri = false` in the config
 if it is unavailable; supported thrusts then show PARRY. Unknown responses stay
 explicitly UNKNOWN. See [classification evidence and limits](docs/incoming-attacks.md)
-and [current build checks](docs/validation-0.11.0.md).
+and [0.11.0 baseline checks](docs/validation-0.11.0.md).
 
 0.9.1 fixes a reproduced DX11 graphics-state leak in the overlay renderer.
 Drawing uses a separate command list with full host-state restoration. The
@@ -27,7 +33,7 @@ reported scene tint still requires an in-game comparison after a full restart.
 ## Install and run on Windows
 
 1. Close Sekiro completely. Extract the newly built
-   `SekiroDeflectObserver-0.11.0-preview-windows-x64.zip` into its own folder.
+   `SekiroDeflectObserver-0.12.0-preview-windows-x64.zip` into its own folder.
 2. Install [me3](https://github.com/garyttierney/me3/releases), keep Steam running,
    then double-click `observer.me3` or run `launch-observer.cmd`.
 3. Load a save, lock onto a living enemy, and look below the enemy's top posture bar.
@@ -50,9 +56,10 @@ The current build is a local research candidate, not a gameplay-validated releas
 | Key | Action (focused game, one fresh press) |
 | --- | --- |
 | F6 / F7 | Lower / raise by 8 reference pixels; persist the offset |
-| F8 | Toggle gameplay HUD; persist visibility |
+| F8 | Toggle gameplay HUD; persist visibility; hiding disarms practice |
 | F9 | Toggle separate research panel; persist its visibility |
 | F10 | Reset horizontal and vertical offsets to zero |
+| F11 | Toggle enemy speed practice for this session; starts off |
 
 All hotkeys pass through; ordinary combat input is never captured. F9 may show
 research without a target but cannot enable an unlocked gameplay cue. Invalid,
@@ -105,7 +112,9 @@ behavior variants stay UNKNOWN when NPC identity is unavailable. Unresolved
 projectile routes remain UNKNOWN. Exact sources
 and per-phase parameter IDs are in [incoming coverage](docs/incoming-coverage.json).
 
-The DLL does not press buttons, change combat rules, or require telemetry/accounts.
+The DLL does not press buttons or require telemetry/accounts. Optional F11
+practice temporarily writes eligible enemy animation speed; default-off behavior
+does not change gameplay state. Deflect windows and Wolf's speed are untouched.
 The supplied 0.9.0 clip shows live LOCKED/PARRY cues; the 0.9.1 rendering fix
 still needs a fresh in-game comparison. Optional `incoming_cues = false` retains
 the older estimated press-window mode and its separate [timing ledger](docs/boss-move-coverage.md).

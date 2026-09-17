@@ -3,18 +3,14 @@
 This file is the local handoff record. Append dated session entries and preserve
 historical evidence. Acceptance IDs are from the defensive-cue request.
 
-**Current checkpoint: 0.10.0-preview reference-style top HUD is built and staged;
-the user's saved placement is updated with a backup. Live validation remains.** The user narrowed
-the objective to attack type/response, explicitly removing contact/reach
-prediction as a requirement. See the latest 2026-09-17 entry and
-[0.10.0 evidence](validation-0.10.0.md). The user previously approved
-the design with "yes execute". No further design approval is pending.
-
-Actual source base is `a405273ab4ae539be7e59027940e1e4632fa1cb9` (0.7.0-preview).
-The requested audit reference `2e6e7778bccb518ea17c69e69579d2ca775d9de8`
-(0.6.3-preview) exists but is not HEAD. The changes are **uncommitted** on
-`codex/defensive-cue-posture-hud` in the original checkout. Existing releases,
-Mods folders and historical validation records are preserved.
+**Current checkpoint: the 0.11.0 baseline is committed and pushed as `4c0df9a`
+on `codex/defensive-cue-posture-hud`. New enemy-speed practice work is isolated
+on `feat/enemy-attack-slowdown` (0.12.0-preview).** The user explicitly requested
+committing/pushing the current work before implementing optional 80% attack speed.
+The original attack-response scope remains; no contact prediction is promised.
+See [practice behavior and limits](enemy-speed-practice.md) and
+[0.12.0 validation](validation-0.12.0.md). Existing releases, Mods folders and
+historical validation records are preserved.
 
 - [Approved design](superpowers/specs/2026-09-16-defensive-cue-design.md)
 - [Executed implementation plan](superpowers/plans/2026-09-16-defensive-cue.md)
@@ -569,3 +565,23 @@ research rather than a blocker for this request.
   attack types and unresolved projectile/common dispatches remain unverified.
 - No restart, new injection, game/config/save/graphics edits, commit or push.
   Earlier release folders preserved. See docs/validation-0.11.0.md.
+
+## 2026-09-17: isolated 0.12.0 enemy-speed practice prototype
+
+- User requested commit/push of current work, then a new slowdown branch.
+  Baseline saved as 4c0df9a and pushed to codex/defensive-cue-posture-hud;
+  feat/enemy-attack-slowdown was created afterwards.
+- Added session-only F11 toggle, initially off, and practice_speed = 0.8.
+  Recognized parry/thrust/sweep phases on the locked enemy use a temporary
+  behavior-module animation-speed lease; Wolf/global time remain untouched.
+  Grabs, unknown/no-parry phases and legacy mode are excluded in this prototype.
+- Original speed is revalidated/restored on attack/context loss; switches restore
+  the previous owner first. Failed cleanup blocks new writes; external speed
+  changes pause until explicit rearming. No game files/saves were changed.
+- Practice status/percentage are visible in the caption and F9, with a bounded
+  practice-write transition log. The default-off mode retains the normal HUD.
+- 129 Rust tests, Clippy, formatting, release build, DLL and ASI loader smoke
+  checks passed. Shared draw mesh/raster checked, package hashes verified and
+  previous 0.11.0 artifact preserved. See validation-0.12.0.md for exact hashes.
+- Sekiro was closed. Live animation rate, reactions and cleanup still need the
+  checklist in enemy-speed-practice.md; synthetic tests are not gameplay proof.

@@ -12,6 +12,7 @@ mod incoming_attacks;
 pub mod input;
 pub mod layout;
 pub mod lifecycle;
+pub mod practice;
 pub mod reader;
 pub mod samples;
 pub mod timing;

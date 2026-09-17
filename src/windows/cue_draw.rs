@@ -83,7 +83,12 @@ pub(super) fn draw(
     submitted.viewport = rect_array(bounds.viewport);
     submitted.bounds = Some(rect_array(bounds.full));
 
-    draw_cue(ui, &bounds, decision, config, fonts);
+    let practice = submitted.practice;
+    let percent = (practice.active_for(target)
+        && crate::practice::eligible(target, submitted.at, decision))
+    .then_some(practice.percent);
+    let armed = practice.status == crate::practice::Status::Ready;
+    draw_cue(ui, &bounds, decision, config, fonts, percent, armed);
 }
 
 fn presentation(decision: &Decision, config: &Config) -> (&'static str, [f32; 4], bool) {
@@ -117,14 +122,25 @@ fn presentation(decision: &Decision, config: &Config) -> (&'static str, [f32; 4]
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_cue(
     ui: &Ui,
     bounds: &Bounds,
     decision: &Decision,
     config: &Config,
     fonts: &[(f32, usize)],
+    practice_percent: Option<u32>,
+    practice_armed: bool,
 ) {
     let (label, mut hue, _) = presentation(decision, config);
+    let label = if let Some(percent) = practice_percent {
+        format!("{label} {percent}%")
+    } else if practice_armed && decision.state == State::Neutral {
+        "PRACTICE".to_string()
+    } else {
+        label.to_string()
+    };
+    let label = label.as_str();
     let draw = ui.get_background_draw_list();
     let s = bounds.scale;
     let [cx, cy] = bounds.center;

@@ -45,6 +45,7 @@ pub(super) struct RenderSample {
     pub profile_evidence: String,
     pub profile_scope: String,
     pub profile_trials: String,
+    pub practice: crate::practice::Snapshot,
 }
 impl RenderSample {
     fn row(&self) -> String {
@@ -141,6 +142,8 @@ impl RenderSample {
             number(d.activation.map(|p| p.start)),
             number(d.activation.map(|p| p.end)),
             d.progress.to_string(),
+            self.practice.status.label().into(),
+            self.practice.percent.to_string(),
         ]);
         fields
             .iter()
@@ -168,10 +171,49 @@ extern "system" {
         size: usize,
         read: *mut usize,
     ) -> i32;
+    fn WriteProcessMemory(
+        process: *mut c_void,
+        address: *mut c_void,
+        buffer: *const c_void,
+        size: usize,
+        written: *mut usize,
+    ) -> i32;
 }
 
-struct LocalMemory {
+pub(super) struct LocalMemory {
     started: Instant,
+}
+impl LocalMemory {
+    pub(super) fn new() -> Self {
+        Self {
+            started: Instant::now(),
+        }
+    }
+}
+impl crate::practice::SpeedMemory for LocalMemory {
+    fn write_speed(&self, address: usize, value: f32) -> Result<(), ReadError> {
+        if self.started.elapsed() >= READ_BUDGET {
+            return Err(ReadError::BudgetExceeded);
+        }
+        let bytes = value.to_le_bytes();
+        let mut written = 0;
+        // Only the practice controller calls this, after hash/owner/value checks.
+        // The OS checks accessibility; no untrusted pointer is dereferenced here.
+        let ok = unsafe {
+            WriteProcessMemory(
+                GetCurrentProcess(),
+                address as *mut c_void,
+                bytes.as_ptr().cast(),
+                bytes.len(),
+                &mut written,
+            )
+        };
+        if ok == 0 || written != bytes.len() {
+            Err(ReadError::Unreadable)
+        } else {
+            Ok(())
+        }
+    }
 }
 impl Memory for LocalMemory {
     fn read(&self, address: usize, bytes: &mut [u8]) -> Result<(), ReadError> {
@@ -211,6 +253,7 @@ pub(super) struct CueState {
     pub config_diagnostic: String,
     pub generation: u64,
     pub observation_metadata: cue::CaptureMetadata,
+    pub practice: crate::practice::Snapshot,
 }
 impl CueState {
     fn new(config: config::Config) -> Self {
@@ -223,6 +266,7 @@ impl CueState {
             config_diagnostic: String::new(),
             generation: 0,
             observation_metadata: Default::default(),
+            practice: Default::default(),
         };
         state.configure(config);
         state
@@ -278,6 +322,7 @@ pub(super) struct Diagnostics {
     pub cue: Arc<Mutex<CueState>>,
     pub visible: Arc<AtomicBool>,
     pub debug: Arc<AtomicBool>,
+    pub practice_enabled: Arc<AtomicBool>,
     pub gate: Arc<crate::lifecycle::Gate>,
     pub command_dropped: std::sync::atomic::AtomicU64,
     command_tx: SyncSender<Command>,
@@ -306,6 +351,8 @@ impl Diagnostics {
         }
         let visible = Arc::new(AtomicBool::new(store.current().visible));
         let debug = Arc::new(AtomicBool::new(store.current().diagnostics));
+        let practice_enabled = Arc::new(AtomicBool::new(false));
+        let worker_practice = Arc::clone(&practice_enabled);
         let gate = Arc::new(crate::lifecycle::Gate::default());
         let worker_gate = Arc::clone(&gate);
         let worker_visible = Arc::clone(&visible);
@@ -328,6 +375,7 @@ impl Diagnostics {
         let render_file = File::create(super::log_path()?.with_extension("render.csv"))?;
         let alert_file = File::create(super::log_path()?.with_extension("alerts.csv"))?;
         let event_file = File::create(super::log_path()?.with_extension("events.csv"))?;
+        let practice_file = File::create(super::log_path()?.with_extension("practice.csv"))?;
         let cue_logging_ok = Arc::clone(&cue_log_ok);
         let render_logging_ok = Arc::clone(&render_log_ok);
         let alert_logging_ok = Arc::clone(&alert_log_ok);
@@ -350,7 +398,7 @@ impl Diagnostics {
             let mut event_logging = event_log.write_all(event_header.as_bytes()).is_ok();
             let incoming_data_hash = crate::identity::sha256(&mut &include_bytes!("../incoming_attacks.rs")[..]).unwrap();
             let render_header = format!("# dll_sha256={dll_hash}; executable_sha256={hash}; data_sha256={}; version={}; epoch_unix_us={epoch_unix_us}; incoming_data_sha256={incoming_data_hash}; evidence=draw_submission_not_present_or_contact\nat_us,frame,status,handle,model,animation_id,animation_time,sequence,sample_age_ms,anchor_x,anchor_y,state,response,occurrence,phase,contact_start,contact_end,press_start,press_end,preferred,calibrated,rate,capture_age_ms,pulse_emitted,pulse,reason,projected_animation_time,anchor_mode,display_mode,surface_width,surface_height,viewport,captured_at_us,observed_at_us,observation_id,read_capture_id,read_source,decision_capture_id,decision_source,read_finished_us,published_us,owner_generation,render_generation,invalidated_us,hidden_submission_delay_us,profile_evidence,profile_scope,profile_trials_successes_failures,visible_presentation,actual_input,contact_observation,deflect_result,cue_bounds,coarse_distance,coarse_distance_limit,vertical_delta,facing_length,facing_cosine,reach_reason\n",crate::identity::sha256(&mut &include_bytes!("../attack_timings.rs")[..]).unwrap(),env!("CARGO_PKG_VERSION"));
-            let render_header = render_header.trim_end().to_string() + ",npc_param_id,behavior_variation,activation_start,activation_end,phase_progress\n";
+            let render_header = render_header.trim_end().to_string() + ",npc_param_id,behavior_variation,activation_start,activation_end,phase_progress,practice_status,practice_percent\n";
             let alert_header = "# sampling=received_decision_transitions_and_1s_heartbeat; not_every_frame\n".to_string() + &render_header;
             let mut alert_written = alert_header.len() as u64;
             let mut alert_logging = alert_log.write_all(alert_header.as_bytes()).is_ok();
@@ -367,6 +415,7 @@ impl Diagnostics {
             let _ = alert_log.flush();
             let _ = log.flush();
             let base = unsafe { GetModuleHandleW(std::ptr::null()) } as usize;
+            let mut practice = super::practice::Session::new(base, &hash, &dll_hash, epoch_unix_us, practice_file);
             let mut last_flush = Instant::now();
             let mut last_reload=Instant::now()-Duration::from_secs(1);
             let mut last_config_diagnostic=String::new();
@@ -402,6 +451,7 @@ impl Diagnostics {
                 let owner=cue_result.as_ref().ok().and_then(Option::as_ref).filter(|t|t.animation_error.is_none()).map(|t|(t.player_instance,t.animation_module,t.handle,t.model,t.animation.id,t.npc_param));
                 if owner!=previous_owner { worker_gate.invalidate(cue_finished); previous_owner=owner; }
                 let mut published_metadata=cue::CaptureMetadata {observation_id,read_start:at,read_finished:cue_finished,source:"invalid_or_missing",..Default::default()};
+                let mut practice_target = None;
                 // Publish before ALL configuration, event/log formatting and file work.
                 if let Ok(mut state) = shared_cue.lock() {
                     if let Some(target)=cue_result.as_mut().ok().and_then(Option::as_mut) {
@@ -416,7 +466,21 @@ impl Diagnostics {
                     published_metadata=target.map_or(cue::CaptureMetadata {published_at:epoch.elapsed(),owner_generation:generation,..published_metadata},|t|t.metadata);
                     state.observation_metadata=published_metadata;
                     state.live.trace=trace.clone(); state.live.push(at,cue_result.clone());
+                    let now = epoch.elapsed();
+                    let decision = state.engine.incoming(now, state.settings.enabled, state.config.mikiri);
+                    if state.config.incoming_cues && state.live.advancing(now) {
+                        practice_target = target.filter(|t|crate::practice::eligible(t, now, &decision)).cloned();
+                    }
                 } else { break; }
+                // Release the render mutex before OS writes and transition logging.
+                let context = super::game_has_focus() && worker_visible.load(Ordering::Relaxed)
+                    && store.current().visible && store.current().incoming_cues;
+                if !worker_visible.load(Ordering::Relaxed) || !store.current().visible {
+                    worker_practice.store(false, Ordering::Relaxed);
+                }
+                let practice_status = practice.update(epoch.elapsed(), worker_practice.load(Ordering::Relaxed),
+                    practice_target.as_ref().filter(|_|context), store.current().practice_speed);
+                if let Ok(mut state) = shared_cue.lock() { state.practice = practice_status; }
                 let event_target = cue_result.as_ref().ok().and_then(Option::as_ref);
                 let event_sample = event_target.filter(|t|t.animation_error.is_none()).map(|t|crate::attack_events::Observation {player_instance:t.player_instance,animation_module:t.animation_module,owner_generation:t.metadata.owner_generation,handle:t.handle,model:t.model,animation:t.animation});
                 for event in event_tracker.update(event_sample) {
@@ -451,6 +515,7 @@ impl Diagnostics {
                             animation:submitted.animation,occurrence:submitted.decision.occurrence,
                             phase:submitted.decision.phase,state:submitted.decision.state,response:submitted.decision.response,
                             status:submitted.status,submitted:submitted.position.is_some(),generation:submitted.generation,
+                            practice:submitted.practice.status,
                         });
                         if !render_logging && !sparse {continue;}
                         let row = submitted.row();
@@ -530,6 +595,7 @@ impl Diagnostics {
             cue: cue_state,
             visible,
             debug,
+            practice_enabled,
             command_tx,
             gate,
             command_dropped: std::sync::atomic::AtomicU64::new(0),

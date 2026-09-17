@@ -104,6 +104,8 @@ pub struct Config {
     pub incoming_cues: bool,
     /// User preference; this does not read whether the skill is unlocked.
     pub mikiri: bool,
+    /// F11 session-only practice mode; never enabled automatically on load.
+    pub practice_speed: f32,
     pub anchor: AnchorMode,
     pub parry_button: ParryButton,
     pub offset_x: f32,
@@ -141,6 +143,7 @@ impl Default for Config {
         Self {
             incoming_cues: true,
             mikiri: true,
+            practice_speed: 0.8,
             anchor: AnchorMode::Top,
             parry_button: ParryButton::default(),
             offset_x: 0.0,
@@ -205,6 +208,7 @@ impl Config {
     }
 
     fn validate(&self) -> Result<(), String> {
+        bounded("practice_speed", self.practice_speed, 0.5, 1.0)?;
         bounded("offset_x", self.offset_x, -480.0, 480.0)?;
         bounded("offset_y", self.offset_y, -160.0, 160.0)?;
         bounded("scale", self.scale, 0.5, 1.5)?;
@@ -882,6 +886,10 @@ parry = "#01020380"
     #[test]
     fn parser_rejects_nonfinite_and_out_of_range_settings() {
         let invalid = [
+            "practice_speed = 0.49",
+            "practice_speed = 1.01",
+            "practice_speed = nan",
+            "practice_speed = inf",
             "offset_x = 481",
             "offset_y = -161",
             "scale = 0.499",

@@ -16,6 +16,7 @@ use crate::{identity, input};
 
 mod cue_draw;
 mod diagnostics;
+mod practice;
 
 const DLL_PROCESS_ATTACH: u32 = 1;
 static STARTED: AtomicBool = AtomicBool::new(false);
@@ -129,7 +130,7 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
     }
     log_event(
         &mut log,
-        "Hooks installed. Incoming attack response HUD by default; no reach/contact prediction. Optional legacy timing mode. F6/F7: persist placement; F8: visibility; F9: diagnostics; F10: reset offsets.",
+        "Hooks installed. Incoming attack response HUD by default; no reach/contact prediction. Optional legacy timing mode. F6/F7: persist placement; F8: visibility; F9: diagnostics; F10: reset offsets; F11: session-only enemy speed practice (initially off).",
     )?;
     Ok(())
 }
@@ -201,6 +202,9 @@ impl ImguiRenderLoop for Observer {
             let value = !self.diagnostics.visible.fetch_xor(true, Ordering::Relaxed);
             if !value {
                 self.diagnostics
+                    .practice_enabled
+                    .store(false, Ordering::Relaxed);
+                self.diagnostics
                     .gate
                     .invalidate(self.diagnostics.epoch.elapsed());
             }
@@ -213,6 +217,14 @@ impl ImguiRenderLoop for Observer {
             let value = !self.diagnostics.debug.fetch_xor(true, Ordering::Relaxed);
             self.diagnostics
                 .command(diagnostics::Command::Diagnostics(value));
+        }
+        if input::is_practice_toggle(message, key.0, flags.0)
+            && unsafe { GetForegroundWindow() } == hwnd
+            && self.diagnostics.visible.load(Ordering::Relaxed)
+        {
+            self.diagnostics
+                .practice_enabled
+                .fetch_xor(true, Ordering::Relaxed);
         }
         if let Some(delta) = input::placement_adjustment(message, key.0, flags.0) {
             if unsafe { GetForegroundWindow() } == hwnd {
@@ -246,6 +258,7 @@ impl ImguiRenderLoop for Observer {
         submitted.invalidated_at = self.diagnostics.gate.invalidated_at();
         submitted.surface = ui.io().display_size;
         submitted.display_mode = "unobserved_record_in_trial";
+        let mut practice_speed = 0.8;
         let (target, advancing, cue_status, sample_age, config_diagnostic, inactive_profiles) =
             match self.diagnostics.cue.lock() {
                 Ok(mut state) => {
@@ -259,6 +272,8 @@ impl ImguiRenderLoop for Observer {
                         .as_secs_f64()
                         * 1000.0;
                     submitted.metadata = state.observation_metadata;
+                    submitted.practice = state.practice;
+                    practice_speed = state.config.practice_speed;
                     let status = if state.live.latest.is_some() && target.is_none() {
                         "stale_sample"
                     } else if let Some(error) = state.live.read_error {
@@ -353,6 +368,7 @@ impl ImguiRenderLoop for Observer {
                 Err(_) => (None, false, "reader_unavailable", 0.0, String::new(), 0),
             };
         let render_status = submitted.status;
+        let practice_status = submitted.practice.status.label();
         self.diagnostics.record_render(submitted);
         if !self.diagnostics.debug.load(Ordering::Relaxed) {
             return;
@@ -519,7 +535,12 @@ impl ImguiRenderLoop for Observer {
                 ui.text(format!("Executable SHA256: {}...", &self.fingerprint[..12]));
                 ui.separator();
                 ui.text("Incoming labels identify move responses; they do not predict contact.");
-                ui.text("F6/F7: persist lower/raise. F8: cue. F9: research. F10: reset offsets.");
+                ui.text("F6/F7: placement. F8: cue/off. F9: research. F10: reset. F11: practice.");
+                ui.text(format!(
+                    "Enemy speed practice: {practice_status}; {}% configured; session toggle {}",
+                    practice_speed * 100.0,
+                    self.diagnostics.practice_enabled.load(Ordering::Relaxed)
+                ));
             });
     }
 }

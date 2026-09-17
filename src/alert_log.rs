@@ -16,6 +16,7 @@ pub struct Key {
     pub status: &'static str,
     pub submitted: bool,
     pub generation: u64,
+    pub practice: crate::practice::Status,
 }
 
 #[derive(Default)]
@@ -56,6 +57,7 @@ mod tests {
             status: "incoming_windup",
             submitted: true,
             generation: 1,
+            practice: crate::practice::Status::Off,
         }
     }
 
