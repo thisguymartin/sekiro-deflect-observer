@@ -63,14 +63,18 @@ pub fn animation(m: &impl Memory, module: usize) -> Result<Animation, ReadError>
         return Err(ReadError::InvalidAnimation);
     }
     let raw = bytes::<20>(m, module, 0x20 + ((head + 9) % 10) as usize * 0x14)?;
+    if integer(m, module, 0xe8)? != head {
+        return Err(ReadError::ChangedDuringRead);
+    }
+    decode_animation(raw)
+}
+
+pub(crate) fn decode_animation(raw: [u8; 20]) -> Result<Animation, ReadError> {
     let id = i32::from_le_bytes(raw[0..4].try_into().unwrap());
     let previous = f32::from_le_bytes(raw[4..8].try_into().unwrap());
     let time = f32::from_le_bytes(raw[8..12].try_into().unwrap());
     let duration = f32::from_le_bytes(raw[12..16].try_into().unwrap());
     let sequence = i32::from_le_bytes(raw[16..20].try_into().unwrap());
-    if integer(m, module, 0xe8)? != head {
-        return Err(ReadError::ChangedDuringRead);
-    }
     if id < 0 || duration == 0.0 {
         return Ok(Animation {
             id: -1,
@@ -87,15 +91,69 @@ pub fn animation(m: &impl Memory, module: usize) -> Result<Animation, ReadError>
     {
         return Err(ReadError::InvalidAnimation);
     }
-    if integer(m, module, 0xe8)? != head {
-        return Err(ReadError::ChangedDuringRead);
-    }
     Ok(Animation {
         id,
         previous,
         time,
         sequence,
     })
+}
+
+/// Read only the engine's current submission batch, [module+ec, module+e8).
+/// Loaded 0xb5bef0 advances the batch boundary; 0xb5c730 consumes this range.
+/// Multiple tracks can be submitted per frame (Ogre's trailing 40000 loop).
+/// Never search older history for a convenient attack or use a previous batch.
+pub fn animation_for_model(
+    m: &impl Memory,
+    module: usize,
+    model: i32,
+) -> Result<Animation, ReadError> {
+    let bounds = bytes::<8>(m, module, 0xe8)?;
+    let head = i32::from_le_bytes(bounds[..4].try_into().unwrap());
+    let begin = i32::from_le_bytes(bounds[4..].try_into().unwrap());
+    if !(0..10).contains(&head) || !(0..10).contains(&begin) {
+        return Err(ReadError::InvalidAnimation);
+    }
+    let count = ((head - begin + 10) % 10) as usize;
+    let mut records = Vec::with_capacity(count);
+    let mut latest = Animation {
+        id: -1,
+        previous: 0.0,
+        time: 0.0,
+        sequence: 0,
+    };
+    let mut selected: Option<Animation> = None;
+    for step in 0..count {
+        let slot = 0x20 + ((begin as usize + step) % 10) * 0x14;
+        let raw = bytes::<20>(m, module, slot)?;
+        let frame = decode_animation(raw)?;
+        records.push((slot, raw));
+        latest = frame;
+        let key = (model, frame.id);
+        let relevant = crate::attack_timings::ATTACKS
+            .binary_search_by_key(&key, |a| (a.0, a.1))
+            .is_ok()
+            || crate::attack_timings::SPECIALS
+                .binary_search_by_key(&key, |a| (a.0, a.1))
+                .is_ok();
+        if relevant {
+            if selected.is_some_and(|prior| prior.id != frame.id) {
+                // Blend/competing attacks need more than a guessed priority.
+                return Err(ReadError::InvalidAnimation);
+            }
+            selected = Some(frame);
+        }
+    }
+    // Recheck bytes as well as indices: the ring could wrap during a read.
+    for (slot, raw) in records {
+        if bytes::<20>(m, module, slot)? != raw {
+            return Err(ReadError::ChangedDuringRead);
+        }
+    }
+    if bytes::<8>(m, module, 0xe8)? != bounds {
+        return Err(ReadError::ChangedDuringRead);
+    }
+    Ok(selected.unwrap_or(latest))
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -129,30 +187,45 @@ impl Camera {
             && self.far > self.near
     }
     pub fn project(self, anchor: [f32; 3], display: [f32; 2]) -> Option<[f32; 2]> {
+        self.project_checked(anchor, display).ok()
+    }
+
+    /// Fit a centered camera viewport into any positive render-surface size.
+    /// Preserve projection proportions through pillarboxing or letterboxing.
+    pub fn project_checked(
+        self,
+        anchor: [f32; 3],
+        display: [f32; 2],
+    ) -> Result<[f32; 2], &'static str> {
         if !self.valid()
             || !anchor.iter().all(|v| v.is_finite())
             || !display.iter().all(|v| v.is_finite() && *v > 0.0)
-            || (display[0] / display[1] - self.aspect).abs() > 0.03
         {
-            return None;
+            return Err("projection_invalid_input");
         }
         let delta = subtract(anchor, self.position);
         let z = dot(delta, self.forward);
         if z <= self.near || z >= self.far {
-            return None;
+            return Err("projection_depth_rejected");
         }
         let tangent = (self.fov / 2.0).tan();
         let x = dot(delta, self.right) / (z * tangent * self.aspect);
         let y = dot(delta, self.up) / (z * tangent);
         if !(-1.0..1.0).contains(&x) || !(-1.0..1.0).contains(&y) {
-            return None;
+            return Err("projection_anchor_offscreen");
         }
-        Some([(x + 1.0) * 0.5 * display[0], (1.0 - y) * 0.5 * display[1]])
+        let viewport_width = (display[1] * self.aspect).min(display[0]);
+        let viewport_height = viewport_width / self.aspect;
+        Ok([
+            display[0] * 0.5 + x * 0.5 * viewport_width,
+            display[1] * 0.5 - y * 0.5 * viewport_height,
+        ])
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Target {
+    pub animation_module: usize,
     pub handle: u32,
     pub model: i32,
     pub animation: Animation,
@@ -268,9 +341,9 @@ pub fn observe_traced(
     }
     trace.stage = "animation";
     let model = integer(m, actor, 0x68)? / 10000;
-    let mut frame = animation(m, animation_module);
+    let mut frame = animation_for_model(m, animation_module, model);
     if frame == Err(ReadError::ChangedDuringRead) {
-        frame = animation(m, animation_module);
+        frame = animation_for_model(m, animation_module, model);
     }
     // Keep a freshly resolved lock visible if only its animation is unavailable.
     // There is no history fallback and no green cue for a failed animation read.
@@ -356,6 +429,7 @@ pub fn observe_traced(
         "locked"
     };
     Ok(Some(Target {
+        animation_module,
         handle,
         model,
         animation,
@@ -590,6 +664,7 @@ mod tests {
     }
     fn target() -> Target {
         Target {
+            animation_module: 0xc0000,
             handle: 0x10004001,
             model: 1010,
             animation: Animation {
@@ -703,10 +778,71 @@ mod tests {
         ] {
             assert!(c.project(point, [1920.0, 1080.0]).is_none());
         }
-        assert!(c.project([0.0, 0.0, 5.0], [1080.0, 1920.0]).is_none());
+        assert_eq!(
+            c.project([0.0, 0.0, 5.0], [1080.0, 1920.0]),
+            Some([540.0, 960.0])
+        );
         let mut c = c;
         c.up = c.right;
         assert!(c.project([0.0, 0.0, 5.0], [1920.0, 1080.0]).is_none());
+    }
+    #[test]
+    fn projection_centers_pillarboxed_view_without_stretching() {
+        let c = camera();
+        let point = [1.0, 1.0, 5.0];
+        let normal = c.project(point, [2560.0, 1440.0]).unwrap();
+        let wide = c.project(point, [5120.0, 1440.0]).unwrap();
+        assert!((wide[0] - normal[0] - 1280.0).abs() < 0.001);
+        assert_eq!(wide[1], normal[1]);
+        assert_eq!(
+            c.project([0.0, 0.0, 5.0], [5120.0, 1440.0]),
+            Some([2560.0, 720.0])
+        );
+        let mut native_wide = c;
+        native_wide.aspect = 32.0 / 9.0;
+        let native = native_wide.project(point, [5120.0, 1440.0]).unwrap();
+        assert!((native[0] - wide[0]).abs() < 0.001);
+        assert_eq!(native[1], wide[1]);
+        assert!(c.project([100.0, 0.0, 5.0], [5120.0, 1440.0]).is_none());
+    }
+    #[test]
+    fn projection_reports_why_placement_failed() {
+        let c = camera();
+        assert_eq!(
+            c.project_checked([0.0, 0.0, 5.0], [0.0, 1440.0]),
+            Err("projection_invalid_input")
+        );
+        assert_eq!(
+            c.project_checked([0.0, 0.0, -5.0], [5120.0, 1440.0]),
+            Err("projection_depth_rejected")
+        );
+        assert_eq!(
+            c.project_checked([100.0, 0.0, 5.0], [5120.0, 1440.0]),
+            Err("projection_anchor_offscreen")
+        );
+    }
+    #[test]
+    fn projection_fits_standard_tall_small_and_resized_surfaces() {
+        let c = camera();
+        for display in [
+            [5120.0, 1440.0],
+            [3440.0, 1440.0],
+            [1920.0, 1080.0],
+            [1920.0, 1200.0],
+            [1024.0, 768.0],
+            [1080.0, 1920.0],
+            [640.0, 360.0],
+            [320.0, 240.0],
+        ] {
+            assert_eq!(
+                c.project([0.0, 0.0, 5.0], display),
+                Some([display[0] / 2.0, display[1] / 2.0])
+            );
+            let p = c.project([1.0, 1.0, 5.0], display).unwrap();
+            // Equal world-space offsets retain equal pixel scale on both axes.
+            assert!(((p[0] - display[0] / 2.0) - (display[1] / 2.0 - p[1])).abs() < 0.001);
+            assert!(p[0] > 0.0 && p[0] < display[0] && p[1] > 0.0 && p[1] < display[1]);
+        }
     }
     #[test]
     fn preview_never_uses_unknown_animation_or_out_of_range_or_away_facing_target() {
@@ -812,6 +948,7 @@ mod tests {
                 (0x110000 + 0x130, 320),
                 (0xa0000 + 0x68, 10100000),
                 (0xc0000 + 0xe8, 1),
+                (0xc0000 + 0xec, 0),
                 (0x130000 + 0xe0, 0),
             ] {
                 f.int(at, value);
@@ -855,7 +992,10 @@ mod tests {
                 return Ok(());
             }
             if self.change_head && at == 0x20000 + 0xe8 && self.calls.get() > 1 {
-                output.copy_from_slice(&1i32.to_le_bytes());
+                output[..4].copy_from_slice(&1i32.to_le_bytes());
+                for (i, b) in output.iter_mut().enumerate().skip(4) {
+                    *b = *self.data.get(&(at + i)).ok_or(ReadError::Unreadable)?;
+                }
                 return Ok(());
             }
             for (i, b) in output.iter_mut().enumerate() {
@@ -898,6 +1038,70 @@ mod tests {
         );
         f.change_head = true;
         assert_eq!(animation(&f, 0x20000), Err(ReadError::ChangedDuringRead));
+    }
+    fn ring_frame(f: &mut Fixture, slot: usize, id: i32, time: f32) {
+        f.put(
+            0x20020 + slot * 0x14,
+            &[
+                id.to_le_bytes(),
+                (time - 0.016).to_le_bytes(),
+                time.to_le_bytes(),
+                7.3333335f32.to_le_bytes(),
+                123i32.to_le_bytes(),
+            ]
+            .concat(),
+        );
+    }
+    #[test]
+    fn current_batch_finds_ogre_attack_before_auxiliary_and_never_revives_old_history() {
+        for head in 0..10i32 {
+            let mut f = Fixture::default();
+            let begin = (head + 8) % 10;
+            f.int(0x200e8, head);
+            f.int(0x200ec, begin);
+            ring_frame(&mut f, begin as usize, 100003005, 0.45);
+            ring_frame(&mut f, ((head + 9) % 10) as usize, 40000, 2.7);
+            assert_eq!(animation(&f, 0x20000).unwrap().id, 40000);
+            let selected = animation_for_model(&f, 0x20000, 5020).unwrap();
+            assert_eq!(selected.id, 100003005);
+            assert_eq!(selected.time, 0.45);
+            // The previous attack remains in the ring but is outside this batch.
+            f.int(0x200ec, (head + 9) % 10);
+            assert_eq!(animation_for_model(&f, 0x20000, 5020).unwrap().id, 40000);
+            f.int(0x200ec, head);
+            assert_eq!(animation_for_model(&f, 0x20000, 5020).unwrap().id, -1);
+        }
+    }
+    #[test]
+    fn animation_batch_rejects_competing_attacks_missing_bytes_and_changed_boundaries() {
+        let mut f = Fixture::default();
+        f.int(0x200e8, 2);
+        f.int(0x200ec, 0);
+        ring_frame(&mut f, 0, 100003005, 0.45);
+        ring_frame(&mut f, 1, 100003000, 0.45);
+        assert_eq!(
+            animation_for_model(&f, 0x20000, 5020),
+            Err(ReadError::InvalidAnimation)
+        );
+        ring_frame(&mut f, 1, 40000, 2.7);
+        f.data.remove(&0x20022);
+        assert_eq!(
+            animation_for_model(&f, 0x20000, 5020),
+            Err(ReadError::Unreadable)
+        );
+        ring_frame(&mut f, 0, 100003005, 0.45);
+        f.calls.set(0);
+        f.change_head = true;
+        assert_eq!(
+            animation_for_model(&f, 0x20000, 5020),
+            Err(ReadError::ChangedDuringRead)
+        );
+        f.change_head = false;
+        f.int(0x200ec, 10);
+        assert_eq!(
+            animation_for_model(&f, 0x20000, 5020),
+            Err(ReadError::InvalidAnimation)
+        );
     }
     #[test]
     fn unsupported_build_performs_no_game_reads() {

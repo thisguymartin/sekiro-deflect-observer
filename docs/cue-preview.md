@@ -1,4 +1,4 @@
-﻿# Incoming response cue 0.6.0-preview
+# Incoming response cue 0.6.3-preview
 
 The slider follows Wolf's position and uses the locked enemy's current animation
 to anticipate selected attacks. It never presses buttons or starts a timer from
@@ -6,10 +6,16 @@ guard input. Timing is estimated from attack activation, not confirmed contact.
 
 ## Display and controls
 
-At the 1080p reference scale the track is 360 x 16 pixels, with a 10-pixel-radius
-outlined diamond and a 26-pixel action label on a dark backing. READY gives a
-legible lead-in before PARRY. The label stays above the track instead of moving
-with the diamond. Label visibility is not prolonged past the estimated interval.
+At the 1080p reference scale the timing lane is 360 x 12 pixels. Decorative
+translucent ribbon wings extend its total width to 424 pixels. A larger ivory
+diamond, soft glow, 58-pixel vertical needle and small moving magenta pointer
+follow the supplied video's thumbnail. The pointer identifies the cursor; the
+colored zone and English label specify the response. Unknown or out-of-reach
+phases use a gray pointer. The colored segment's tapered ends stay within its
+timing boundaries, and the diamond's center marks the current animation time.
+The 26-pixel action label uses a dark outline above the pointer, without a boxed
+backing. READY gives a legible lead-in before PARRY. The label stays centered above
+the track. Label visibility is not prolonged past the estimated interval.
 
 | Color / text | Meaning |
 | --- | --- |
@@ -23,6 +29,11 @@ The timer zooms to the final 0.65 seconds of wind-up and up to 0.25 seconds of
 recovery. Earlier wind-up holds the diamond at the left. Animation playback
 speed affects elapsed real time. These estimates do not change any game window.
 DODGE does not predict a safe direction or establish invulnerability timing.
+
+Version 0.6.3 changes appearance only. A longer visual warning could give more
+preparation time, but widening the displayed green interval would not widen the
+game's real acceptance window. Changing that window requires a separate gameplay
+modification; this observer remains read-only. See [visual validation](validation-0.6.3.md).
 
 F6 lowers the track; F7 raises it by 8 reference pixels per fresh press, bounded
 to +/-160 pixels. Adjustment resets when the DLL restarts. F8 toggles visibility;
@@ -98,7 +109,15 @@ Primary format references:
 
 ## Detection and diagnostics
 
-The latest entry in the ten-entry animation history ring retains its 0x14 stride.
+The ten-entry animation history ring retains its 0x14 stride. The 0.6.0 live
+Ogre trial exposed concurrent tracks: auxiliary animation 40000 was usually
+last, hiding its attacks. Version 0.6.1 reads only the engine's current batch
+from module +0xec (batch start) to +0xe8 (next write), with wrap handling. It
+selects a mapped attack/special track even when an auxiliary track follows.
+Competing mapped tracks are ambiguous and suppress timing. Bytes and boundaries
+are rechecked; empty batches stay neutral. No attack is recovered from an older
+batch. Loaded code at 0xb5bef0 and 0xb5c730 plus live Ogre ring snapshots support
+the boundaries; runtime blend weighting still needs validation.
 A fresh valid lock remains neutral while idle or when only the animation read
 fails. Failed animations are not reused. Changed observations get one retry
 within the existing read budget; ownership is rechecked. Stale observations
@@ -123,8 +142,10 @@ necessary. The samples.csv candidate-effect reader is a separate research aid.
 
 Recording 02 shows the old bar rendering in soldier combat, high above Wolf,
 with a brief PARRY before visible sparks around 21 seconds. It does not prove
-exact contact timing or a successful manual deflect. The 0.6 layout is checked
-offline using the actual shared drawing code; new gameplay is still required.
+exact contact timing or a successful manual deflect. Recordings 03/04 show the
+0.6.0 bar closer to Wolf, but also confirm the Ogre's neutral-only failure.
+The 0.6.1 batch-reader correction has regression checks; its actual response
+timing still needs a new gameplay trial after restart.
 See [the current evidence and outstanding trials](validation-0.6.md).
 
 Reach uses distance, approximate body bounds, height and facing, not weapon

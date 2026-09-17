@@ -1,0 +1,59 @@
+SEKIRO DEFLECT OBSERVER - 0.6.3 PREVIEW / FRIEND BETA
+
+WHAT YOU NEED
+Windows x64 and the Steam version of Sekiro.
+No me3 installation, Cheat Engine, compiler or development tools required.
+
+INSTALL - THREE STEPS
+1. Close Sekiro. In Steam, right-click Sekiro > Manage > Browse local files.
+   This opens the folder containing sekiro.exe.
+2. Extract this ZIP. Copy dinput8.dll and sekiro_deflect_observer.asi into
+   that game folder, directly beside sekiro.exe.
+   If dinput8.dll already exists, STOP: do not replace another mod's loader.
+   Ask the person who sent you this beta to help combine the mods.
+3. Start Sekiro normally through Steam, load your save and lock onto an enemy.
+   The timing slider appears above Wolf. Press F9 to check 0.6.3-preview.
+
+Use the normal Steam launch with this package. Do not also launch an observer
+me3 profile or load a second copy of the observer DLL in the same game session.
+Keep this ZIP and its documentation together when sharing with someone else.
+
+HOW TO READ IT
+Green PARRY: estimated block/deflect timing.
+Orange DODGE: a mapped grab; the cue does not pick a safe dodge direction.
+Blue JUMP: a mapped low sweep.
+Gray / UNVERIFIED: this attack has no confident timing/response guidance.
+LOCKED: enemy detected, but no active timing cue.
+You press all buttons yourself. This does not enlarge Sekiro's deflect window.
+
+CONTROLS
+F6 = move bar down     F7 = move bar up (adjustment lasts this session)
+F8 = show/hide bar     F9 = diagnostics and version
+
+IF NOTHING APPEARS
+Confirm both files are beside sekiro.exe, not in a nested folder.
+Fully exit and restart Sekiro; a running game cannot pick up this installation.
+Lock on, try F8 once, then inspect F9 for a read or supported-build error.
+The beta only reads the executable build it recognizes. Other builds can be
+unsupported. Send the error, enemy name and a short clip to the person who
+gave you the beta. Logs are in %LOCALAPPDATA%\SekiroDeflectObserver.
+
+REMOVE / RETURN TO NORMAL
+Close Sekiro, then remove sekiro_deflect_observer.asi from the game folder.
+Remove dinput8.dll only if it is the copy supplied here and no other mod uses it.
+No game executable or save files need to be replaced.
+
+BETA LIMITS
+Selected enemies and moves only, including some Chained Ogre and Guardian Ape
+attacks. Not every enemy, boss, grab, sweep or combo is supported. Timing is an
+estimate from attack animation events, not verified weapon contact.
+The 0.6.3 visuals passed an offline render check. This drop-in route passed a
+standalone loader check; live Sekiro startup and combat still need testing.
+F9 diagnostics and a short clip help distinguish a missing lock from an
+unmapped move. Do not treat every missing cue as permission to stand still.
+
+CREDITS
+Observer: Sekiro Deflect Observer contributors (MIT).
+Bundled loader: Ultimate ASI Loader 9.7.4 by ThirteenAG (MIT).
+https://github.com/ThirteenAG/Ultimate-ASI-Loader
+See the SekiroDeflectObserver folder for licenses, provenance and checksums.

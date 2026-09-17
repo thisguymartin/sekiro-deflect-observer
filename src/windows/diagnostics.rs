@@ -143,6 +143,7 @@ impl Diagnostics {
         let shared_cue = Arc::clone(&cue_state);
         let cue_file = File::create(super::log_path()?.with_extension("cue.csv"))?;
         let render_file = File::create(super::log_path()?.with_extension("render.csv"))?;
+        let event_file = File::create(super::log_path()?.with_extension("events.csv"))?;
         let cue_logging_ok = Arc::clone(&cue_log_ok);
         let render_logging_ok = Arc::clone(&render_log_ok);
         let epoch_unix_us = std::time::SystemTime::now()
@@ -155,6 +156,11 @@ impl Diagnostics {
             let mut log = BufWriter::new(file);
             let mut cue_log = BufWriter::new(cue_file);
             let mut render_log = BufWriter::new(render_file);
+            let mut event_log = BufWriter::new(event_file);
+            let mut event_tracker = crate::attack_events::Tracker::default();
+            let event_header = format!("# version={}; epoch_unix_us={epoch_unix_us}; evidence=animation_time_crossing_not_contact\nat_us,source,handle,model,animation_id,event,phase_time,observed_animation_time\n",env!("CARGO_PKG_VERSION"));
+            let mut event_written = event_header.len() as u64;
+            let mut event_logging = event_log.write_all(event_header.as_bytes()).is_ok();
             let render_header = format!("# version={}; epoch_unix_us={epoch_unix_us}; evidence=draw_submission_not_present_or_contact\nat_us,frame,status,handle,model,animation_id,animation_time,sequence,sample_age_ms,anchor_x,anchor_y,phase_start,phase_end,progress,in_reach,classified,press_submitted,response,response_submitted\n",env!("CARGO_PKG_VERSION"));
             let mut render_written = render_header.len() as u64;
             let mut render_logging = render_log.write_all(render_header.as_bytes()).is_ok();
@@ -177,8 +183,22 @@ impl Diagnostics {
                 if matches!(cue_result, Err(ReadError::ChangedDuringRead)) {
                     cue_result = cue::observe_traced(&LocalMemory { started }, base, &hash, &mut trace);
                 }
+                let event_source = crate::event_hook::apply(cue_result.as_mut().ok().and_then(Option::as_mut));
+                if crate::event_hook::enabled() && cue_result.as_ref().is_ok_and(|r|r.is_some()) {
+                    trace.stage = event_source;
+                    trace.animation_error = cue_result.as_ref().ok().and_then(Option::as_ref).and_then(|t|t.animation_error);
+                }
                 let cue_finished = epoch.elapsed();
                 let at = started.duration_since(epoch);
+                let event_target = cue_result.as_ref().ok().and_then(Option::as_ref);
+                let event_sample = event_target.filter(|t|t.animation_error.is_none()).map(|t|(t.handle,t.model,t.animation));
+                for event in event_tracker.update(event_sample) {
+                    if event_logging {
+                        let row = format!("{},{},{:x},{},{},{},{:.6},{:.6}\n",at.as_micros(),event_source,event.handle,event.model,event.animation,event.kind,event.phase_time,event_target.filter(|t|t.handle==event.handle && t.animation.id==event.animation).map_or(0.0,|t|t.animation.time));
+                        if event_written + row.len() as u64 > LOG_LIMIT || event_log.write_all(row.as_bytes()).is_err() { event_logging=false; }
+                        else { event_written += row.len() as u64; }
+                    }
+                }
                 let cue_row = match &cue_result {
                     Ok(Some(target)) => format!("{},{},{:x},{},{},{:.6},{},{},", at.as_micros(),cue_finished.as_micros(),target.handle,target.model,target.animation.id,target.animation.time,target.animation.sequence,cue::estimated_press(target)),
                     Ok(None) => format!("{},{},,,,,,,No target",at.as_micros(),cue_finished.as_micros()),
@@ -226,6 +246,7 @@ impl Diagnostics {
                     if log.flush().is_err() { logging.store(false, Ordering::Relaxed); }
                     if cue_log.flush().is_err() { cue_logging=false; }
                     if render_log.flush().is_err() { render_logging=false; }
+                    if event_log.flush().is_err() { event_logging=false; }
                     last_flush = Instant::now();
                 }
                 match shared.lock() {
@@ -237,6 +258,7 @@ impl Diagnostics {
             let _ = log.flush();
             let _ = cue_log.flush();
             let _ = render_log.flush();
+            let _ = event_log.flush();
         })?;
         Ok(Self {
             history,

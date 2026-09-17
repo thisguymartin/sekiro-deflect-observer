@@ -92,7 +92,7 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
     let overlay = Observer {
         visible: AtomicBool::new(true),
         debug: AtomicBool::new(false),
-        fingerprint,
+        fingerprint: fingerprint.clone(),
         diagnostics,
         cue_fonts: Vec::new(),
         frame: 0,
@@ -104,6 +104,10 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
         .build()
         .apply()
         .map_err(|error| format!("DirectX 11 hook installation failed: {error:?}"))?;
+    match crate::event_hook::install(&fingerprint) {
+        Ok(()) => log_event(&mut log, "Animation-event batch-boundary hook installed; completed batches drive timing. Contact/result hooks not implemented.")?,
+        Err(reason) => log_event(&mut log, &format!("Event hook unavailable: {reason}. Using polling fallback."))?,
+    }
     log_event(
         &mut log,
         "Hooks installed. Overhead activation-estimate preview; contact timing unvalidated. F8: visibility; F9: diagnostics.",
@@ -254,6 +258,7 @@ impl ImguiRenderLoop for Observer {
                 &mut submitted,
             );
         }
+        let render_status = submitted.status;
         self.diagnostics.record_render(submitted);
         if !self.debug.load(Ordering::Relaxed) {
             return;
@@ -333,7 +338,20 @@ impl ImguiRenderLoop for Observer {
                 ui.text(format!("Observer loaded | {}", env!("CARGO_PKG_VERSION")));
                 ui.separator();
                 ui.text(format!("Cue reader: {cue_status} | age {sample_age:.1} ms"));
+                ui.text(format!("Overlay: {render_status}"));
+                ui.text(format!(
+                    "Event hook: {} | batches: {} | missed captures: {}",
+                    crate::event_hook::enabled(),
+                    crate::event_hook::CAPTURED.load(Ordering::Relaxed),
+                    crate::event_hook::DROPPED.load(Ordering::Relaxed)
+                ));
+                ui.text("Event crossings are animation timing, not confirmed contact.");
                 if let Some(target) = target.as_ref() {
+                    let display = ui.io().display_size;
+                    ui.text(format!(
+                        "Surface: {:.0} x {:.0} | camera aspect: {:.4}",
+                        display[0], display[1], target.camera.aspect
+                    ));
                     ui.text(format!(
                         "Locked model c{:04} | anim {} @ {:.3}s",
                         target.model, target.animation.id, target.animation.time

@@ -1,5 +1,16 @@
-﻿Sekiro Deflect Observer 0.6.0-preview
+Sekiro Deflect Observer 0.7.0-preview
 Windows x64 incoming-attack cue preview
+
+0.7.0 adds a hash-gated animation-batch hook and attack-event timing log.
+F9 shows whether the hook installed and counts captured batches. Lock onto
+an enemy and check that the batch count increases. If loaded code differs
+from the researched function, the hook stays disabled and polling is used.
+The screen-size adaptation from 0.6.4 is retained.
+
+This is an event-tracking test build. Runtime attack-parameter selection,
+collision prediction and deflect/block/damage result hooks are NOT implemented.
+The existing unverified classifications remain. The new .events.csv log records
+animation timeline crossings, not confirmed hits. Live validation is pending.
 
 The timing slider follows Wolf and anticipates selected locked-enemy attacks.
 You press the buttons yourself. Timing and response classification remain
@@ -26,8 +37,21 @@ A running game keeps the previously loaded version until it exits completely.
 
 WHAT CHANGED
 
+Version 0.6.3 refines the reference-inspired design: a larger ivory diamond,
+longer needle, moving magenta pointer, brighter chevrons and translucent ribbon
+wings. Outlined English text replaces the boxed label. The magenta pointer only
+identifies the cursor; green/orange/blue zones and English text give the response.
+Unknown or out-of-reach phases use a gray pointer. This is a visual update;
+neither the estimated press interval nor Sekiro's actual deflect window changes.
+
+The 0.6.0 gameplay trial revealed that the Ogre's auxiliary animation hid its
+attack track, leaving a neutral bar. Version 0.6.1 reads the current animation
+batch and selects the mapped attack. It does not reuse older history; ambiguous
+competing attack tracks suppress guidance. This correction requires a restart.
+
 The bar is lower, the diamond is larger, and the action text is easier to read.
-The 360 x 16 track scales with resolution. Its anchor follows Wolf's position
+The 360 x 12 timing lane (424 pixels including decorative wings) scales with
+resolution. Its anchor follows Wolf's position
 plus standing height; it does not yet follow the animated head during crouches
 or acrobatics. F6/F7 allow placement adjustment without editing files.
 
@@ -57,9 +81,10 @@ stale data, dead actors and invalid projections suppress guidance.
 Approximate reach/facing checks are not weapon collision geometry.
 
 Recording 02 of the older build shows a soldier cue before contact sparks.
-The new layout has an offline render check and automated tests; new gameplay
-placement, boss responses, successful deflects and precise contact timing still
-need validation. Normal camera at 16:9 or wider matching display is supported.
+Recordings 03/04 show the 0.6.0 bar closer to Wolf and the Ogre reader failure.
+The 0.6.1 correction passes regression checks, but its live boss responses,
+successful deflects and precise contact timing still need validation. Normal
+camera at 16:9 or wider matching display is supported.
 
 RUN REQUIREMENTS AND LOGS
 
