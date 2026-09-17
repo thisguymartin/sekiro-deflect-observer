@@ -605,3 +605,17 @@ research rather than a blocker for this request.
 - 0.12.1 is staged separately and previous builds are preserved. Feature
   boundaries are documented in feature-boundaries.md. No live game was running;
   this follow-up does not claim gameplay verification of the speed prototype.
+
+## 2026-09-17: prepare the documented 0.12.1 PR
+
+- User requested a PR, push and updated documentation. The current feature branch
+  was already pushed through 1f42256; GitHub main still held the 0.6.3 merge.
+- Incorporated origin/main into the feature branch. Reviewed merge conflicts and
+  retained the tested 0.12.1 implementation; the merge resolution introduces no
+  runtime/source changes relative to 1f42256.
+- Added 0.12.0/0.12.1 changelog entries, corrected architecture/run-guide claims
+  about speed writes, documented F8/F11 and independent alert preferences, and
+  added clearly labeled current synthetic visuals. Historical 0.6.3 guidance
+  remains available and is labeled as historical.
+- The 0.12.1 validation record and local artifact hashes still apply. PR CI is
+  separate from those local checks; live gameplay verification remains pending.

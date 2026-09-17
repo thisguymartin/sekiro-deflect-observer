@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.12.1-preview - 2026-09-17 (independent alerts and practice)
+
+- Separate canonical attack kind/phase classification into `attack.rs`. Alert
+  toggles, Mikiri hint fallback and incoming/legacy HUD mode only affect display;
+  practice eligibility uses raw attack facts and capture freshness.
+- Keep speed writes in a private Windows practice adapter. The shared reader is
+  read-only, and HUD drawing reports applied status without choosing eligibility.
+- Show PRACTICE 80% when a speed override is active but attack hints are disabled.
+  F11 remains session-only; F8 hiding still disarms practice.
+- Add regressions across all 32 hint/display-mode combinations for each of three
+  eligible attack kinds. All 131 Rust tests pass; live gameplay remains unverified.
+- Update feature boundaries, installation, controls, architecture and validation
+  documentation for the 0.12.1 preview.
+
+## 0.12.0-preview - 2026-09-17 (optional enemy-speed practice)
+
+- Add F11 practice, initially off each process, with an 80% default multiplier
+  for recognized locked-enemy parryable, thrust and sweep phases. Wolf's speed,
+  global time and deflect windows are untouched. Grabs and unknown/no-parry
+  phases remain excluded in this prototype; projectile flight is not rescaled.
+- Save the original speed once and use ownership/value checks for restoration
+  on attack/context loss or target switching. Pending cleanup blocks new writes;
+  external speed changes pause practice until explicit rearming.
+- Add applied-speed captions, F9 status, bounded practice-write audit logging,
+  and regression tests. No game files or saves are edited; this optional mode
+  does temporarily write enemy animation speed. Live reaction/cleanup checks
+  remain pending. See `docs/enemy-speed-practice.md`.
+
 ## 0.11.0-preview - 2026-09-17 (enemy variants and incoming timing)
 
 - Add optional, coherent NPC parameter identification for weapon-specific

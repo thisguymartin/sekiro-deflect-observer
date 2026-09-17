@@ -1,4 +1,10 @@
-# Reference-style HUD preview 0.10.0
+# Reference-style HUD preview 0.12.1
+
+0.12.1 keeps the reference-style geometry introduced in 0.10.0. Optional F11
+practice adds an applied-speed percentage. With attack hints disabled it shows
+PRACTICE 80%; alert preferences do not change practice eligibility. F8 hiding
+disarms practice. See [current visuals](screenshots.md),
+[practice controls](enemy-speed-practice.md) and [current checks](validation-0.12.1.md).
 
 ![Synthetic shared-renderer reference gallery](images/0.10.0-reference-gallery.png)
 
@@ -54,7 +60,8 @@ preferred pulse. Decoration never extends the press label or actionable color.
 See [the timing model](parry-cue.md) and [all configuration bounds](configuration.md).
 
 F6/F7 persist vertical changes, F8 toggles the gameplay HUD, F9 toggles separate
-research, and F10 resets offsets. Focused fresh presses pass through to the game.
+research, and F10 resets offsets. F11 toggles session-only practice, initially
+off; F8 hiding also disarms it. Focused fresh presses pass through to the game.
 No gameplay preview is synthesized without lock. Optional overhead mode projects
 player root +1.55 world units and uses the same portable timing decision; invalid
 or offscreen projection suppresses it. Fixed placement needs no player projection.

@@ -1,5 +1,10 @@
 # Share the 0.6.3 friend beta
 
+This page describes the historical 0.6.3 drop-in package. For the current
+0.12.1 me3 preview, use the [Windows run guide](windows.md) and
+[practice controls](enemy-speed-practice.md). Do not label the older ZIP as a
+current build; its DLL does not contain the later HUD or slowdown features.
+
 Send `SekiroDeflectObserver-0.6.3-preview-drop-in-windows-x64.zip`. Its two runtime
 files go beside `sekiro.exe`; the friend launches through Steam normally. No
 separate me3 installation is needed for this variant. `START-HERE.txt` in the ZIP

@@ -1,13 +1,16 @@
 # Build and run on Windows
 
-The current source candidate is **0.10.0-preview**, with a configured compact HUD
+The current source candidate is **0.12.1-preview**, with a configured compact HUD
 below the enemy's top posture bar, persistent TOML settings and incoming attack
-response labels without reach/contact prediction. Build it with `scripts/build.ps1`; that produces the new me3
+response labels without reach/contact prediction. Optional F11 practice slows
+eligible enemy attacks independently of alert preferences and starts off. See
+[practice controls and limits](enemy-speed-practice.md). Build it with
+`scripts/build.ps1`; that produces the new me3
 package. [Current behavior and limits](cue-preview.md), [configuration](configuration.md)
 and [check evidence](WORK-STATUS.md) supersede older present-tense cue descriptions.
 
 The 0.6.3 drop-in installation below is retained for users of that **older**
-package. It does not gain 0.10.0 behavior without replacing the observer DLL and
+package. It does not gain 0.12.1 behavior without replacing the observer DLL and
 fully restarting the process. No new drop-in distribution is claimed here.
 
 ## Run a built package
@@ -18,7 +21,7 @@ Cheat Engine is needed to run either package. Choose one loading method:
 | Package filename | How it starts | Separate loader installation |
 | --- | --- | --- |
 | `SekiroDeflectObserver-0.6.3-preview-drop-in-windows-x64.zip` | Two files beside `sekiro.exe`; normal Steam launch | None; ASI loader is included |
-| `SekiroDeflectObserver-0.10.0-preview-windows-x64.zip` | Double-click the extracted `observer.me3` | Install me3 once |
+| `SekiroDeflectObserver-0.12.1-preview-windows-x64.zip` | Double-click the extracted `observer.me3` | Install me3 once |
 
 The beta ZIP is supplied separately by the author. GitHub's **Code → Download ZIP**
 downloads source code, not a ready-to-play mod.
@@ -49,7 +52,7 @@ This startup route passed a standalone ASI loader/DirectInput forwarding check.
 A live Sekiro launch through this route and a clean installation on another PC
 remain beta checks.
 
-### Current 0.10.0 me3 installation
+### Current 0.12.1 me3 installation
 
 1. Extract the **me3** ZIP into its own folder, such as `C:\Mods\SekiroDeflectObserver`.
 2. Install me3 using its [official Windows release](https://github.com/garyttierney/me3/releases).
@@ -68,15 +71,17 @@ Keep the DLL and profile together. Remove the drop-in observer from the game
 folder before switching to this method. A running game retains its loaded DLL
 until it exits completely.
 
-### Current 0.10.0 controls and states
+### Current 0.12.1 controls and states
 
 | Control or cue | Meaning |
 | --- | --- |
 | F6 / F7 | Lower / raise by 8 reference pixels; persist the offset |
-| F8 | Show / hide gameplay HUD; persist visibility |
+| F8 | Show / hide gameplay HUD; persist visibility; hiding disarms practice |
 | F9 | Show / hide separate diagnostics and version; persist visibility |
 | F10 | Reset horizontal and vertical offsets |
-| PARRY / DODGE / JUMP / MIKIRI | Incoming response; hollow during wind-up, filled during the active attack phase |
+| F11 | Toggle enemy-speed practice for this session; initially off |
+| PRACTICE / PRACTICE 80% | Armed and waiting / applied slowdown with attack hints disabled |
+| PARRY / DODGE / JUMP / MIKIRI | Incoming response; marker approaches center during wind-up |
 | NO PARRY / UNKNOWN | Deflection disabled / response unresolved |
 | READY, hollow lane | Legacy timing mode only: prepare for the selected hit |
 | Green PARRY NOW, filled lane | Estimated or compatible calibrated defensive press interval |
@@ -104,11 +109,10 @@ Install these development dependencies once:
 2. Rust through [rustup](https://rust-lang.org/tools/install/), using the MSVC toolchain.
 3. Git if cloning the repository; downloading the preview branch as source also works.
 
-The 0.10.0 candidate currently exists as uncommitted changes in this checkout on
-`codex/defensive-cue-posture-hud`; it has not been pushed or published. Cloning an
-older preview branch will not retrieve these changes. Preserve the current
-working tree, including new files, when moving it to another build folder.
-See [the source-state record](WORK-STATUS.md). Open **Developer PowerShell for
+The 0.12.1 candidate is committed and pushed on `feat/enemy-attack-slowdown`.
+Select that branch to build this preview while its PR is open; older branches
+and packages retain their earlier behavior. See [the source-state record](WORK-STATUS.md)
+and [validated artifacts](validation-0.12.1.md). Open **Developer PowerShell for
 Visual Studio** in this source folder, then run:
 
 ```powershell
@@ -125,8 +129,8 @@ DLL, verifies that the DLL rejects a non-game host, and creates:
 
 ```text
 target/x86_64-pc-windows-msvc/release/sekiro_deflect_observer.dll
-dist/SekiroDeflectObserver-0.10.0-preview-windows-x64.zip
-dist/SekiroDeflectObserver-0.10.0-preview-windows-x64.zip.sha256
+dist/SekiroDeflectObserver-0.12.1-preview-windows-x64.zip
+dist/SekiroDeflectObserver-0.12.1-preview-windows-x64.zip.sha256
 ```
 
 The ZIP from this command is the **me3 variant**. Follow the me3 instructions
@@ -209,6 +213,7 @@ These are checks to perform, not claims that every condition has passed:
 - [ ] F9 displays the expected version and explains unsupported-build/read errors.
 - [ ] Locking onto a living enemy shows the cue or an F9 diagnostic reason; unlocking hides gameplay guidance.
 - [ ] F6/F7 placement, F8/F9 visibility and F10 reset work once per focused fresh key press; settings survive a full restart.
+- [ ] F11 practice starts off; enabling it affects only eligible enemy phases. Changing alert hints/HUD mode does not change slowdown; F8 hiding disarms it. Complete the [practice checklist](enemy-speed-practice.md#live-check-still-needed).
 - [ ] Malformed config reload preserves the last valid settings and reports the reason.
 - [ ] Top HUD bounds stay below the enemy's native posture bar at your resolution/UI scale; record the gap. Check lower-posture mode separately if selected.
 - [ ] Movement, camera, menus, controller input and normal attacks remain usable.
@@ -230,7 +235,7 @@ those files remain installed, starting through Steam loads the observer.
 profile. Remove the extracted observer folder if you no longer need it. Keep
 shared me3 files used by other mods.
 
-F8 only hides the display; it does not unload the DLL. Game executables and
+F8 hides the display and disarms practice; it does not unload the DLL. Game executables and
 save files do not need to be replaced for either installation method.
 
 ## Troubleshoot
@@ -240,7 +245,7 @@ save files do not need to be replaced for either installation method.
 | `dinput8.dll` already exists | Do not overwrite it; identify the existing loader before combining mods. |
 | No overlay with drop-in files | Check both runtime files are beside `sekiro.exe`, restart fully, lock on, then try F8/F9. |
 | No overlay with me3 | Extract the ZIP fully and keep the DLL next to `observer.me3`; inspect launch output and logs. |
-| Bar is in the wrong position | In 0.10.0, use F6/F7 or the bounded anchor/offset/safe-area settings in cue.toml. Fixed placement uses a configured posture band, not automatic detection. F10 resets offsets. |
+| Bar is in the wrong position | In 0.12.1, use F6/F7 or the bounded anchor/offset/safe-area settings in cue.toml. Fixed placement uses a configured posture band, not automatic detection. F10 resets offsets. |
 | LOCKED during attacks | The target may be detected while the move has no eligible timing instruction. Use F9, enemy/move details and a clip. Older versions may show UNVERIFIED. |
 | Unsupported build / stale or failed reads | Record the F9 reason; the observer suppresses guidance when data is unavailable. |
 | `cargo` is not recognized | Install Rust and open a new terminal. |
@@ -267,17 +272,17 @@ Select rustup's pinned 1.94.0 Cargo. On the development machine the standalone
 $env:PATH = 'C:/Users/mpati/.cargo/bin;' + $env:PATH
 cargo test --locked --offline --target x86_64-pc-windows-msvc
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-asi-loader.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-asi-loader.ps1 -OutputDirectory dist/review-0.12.1/asi-smoke
 ```
 
-The ASI smoke script now defaults to the **current release DLL**, copied as `.asi`
-into isolated `dist/review-0.10.0/asi-smoke`. It uses the preserved research loader
+The ASI smoke script defaults to the **current release DLL**. The command above
+copies it as `.asi` into isolated `dist/review-0.12.1/asi-smoke`. It uses the preserved research loader
 at `dist/drop-in-research/loader/dinput8.dll`; if that local input is missing, the
 loader check is blocked. It never starts Sekiro or captures input. Optional
 `-ObserverDll` and `-OutputDirectory` select the DLL and a workspace-dist output.
 A passing non-game smoke check is not live game installation/launch evidence.
 The old `package-drop-in.py` remains pinned to 0.6.3 and must not be used to label
-a newly compiled 0.10.0 DLL as that tested package.
+a newly compiled 0.12.1 DLL as that tested package.
 
 Settings live in `%LOCALAPPDATA%/SekiroDeflectObserver/cue.toml`; a copy ships in
 the package. All defaults/ranges and reload/reset behavior are in

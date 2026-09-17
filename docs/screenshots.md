@@ -1,15 +1,40 @@
 # Versioned visuals for the beta
 
-## Current 0.6.3 design - offline preview
+## Current 0.12.1 practice and independent hints ? synthetic previews
+
+![0.12.1 practice gallery, offline render](images/0.12.1-practice-gallery.png)
+
+This uses the actual shared drawing code with synthetic target/controller states.
+Eligible parryable, sweep and thrust states show 80%; excluded grabs, unknowns
+and no-parry phases do not. The neutral PRACTICE caption indicates armed/waiting.
+Only one rail appears during normal play. This is not evidence of a live speed
+write, measured slowdown or successful defensive input.
+
+![0.12.1 with attack hints disabled and practice active, offline render](images/0.12.1-practice-no-hints.png)
+
+Disabling attack hints leaves the applied-speed status visible as PRACTICE 80%.
+See [feature boundaries](feature-boundaries.md) and [validation](validation-0.12.1.md).
+Reproduce with the current source:
+
+```powershell
+cargo run --locked --offline --example cue-layout --target x86_64-pc-windows-msvc -- dist/review-0.12.1/layout/practice --incoming-gallery --practice
+cargo run --locked --offline --example cue-layout --target x86_64-pc-windows-msvc -- dist/review-0.12.1/layout/no-hints --state incoming-parry --practice --no-hints
+python scripts/render-cue-layout.py dist/review-0.12.1/layout/practice
+python scripts/render-cue-layout.py dist/review-0.12.1/layout/no-hints
+```
+
+The historical reproduction commands below require their matching older source.
+
+## Historical 0.6.3 design - offline preview
 
 ![0.6.3 offline rendering of READY, PARRY, DODGE and JUMP](images/0.6.3-offline-design.png)
 
 This image is produced by the actual shared ImGui drawing code using synthetic
-attack states. It shows the current filled diamond, needle, pointer, ribbon and
+attack states. It shows the 0.6.3 filled diamond, needle, pointer, ribbon and
 English action labels. It is not a screenshot of successful gameplay inputs.
 No AI-generated replacement scene or promotional video thumbnail is used.
 
-### Current action close-ups
+### Historical 0.6.3 action close-ups
 
 These are native-scale renders of the shared overlay geometry into a smaller
 documentation viewport. They are not retouched game screenshots or changes to

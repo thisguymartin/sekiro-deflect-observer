@@ -1,4 +1,4 @@
-# Native observer architecture (0.10.0-preview)
+# Native observer architecture (0.12.1-preview)
 
 The DX11 backend is the pinned hudhook 0.9.2 source under `vendor/hudhook` with
 the patch documented in `OBSERVER-PATCH.md`. HUD commands are recorded on a
@@ -8,21 +8,29 @@ Partial command lists are discarded on error. Texture updates touch only
 renderer-owned resources. The old incomplete manual state backup is removed.
 See `tests/dx11-render-isolation.rs` and `docs/validation-0.9.1.md`.
 
-The default decision path is now `Engine::incoming` -> `src/incoming.rs`, using
-`src/incoming_attacks.rs` and the exact evidence in `docs/incoming-coverage.json`.
+The default alert path is `Engine::incoming` -> `src/incoming.rs` ->
+`src/attack.rs`, using `src/incoming_attacks.rs` and the exact evidence in
+`docs/incoming-coverage.json`. Raw attack classification does not accept display
+preferences. Alert filtering and Mikiri-to-PARRY fallback stay in `incoming.rs`.
 It identifies the current/next attack phase and response without reach gating,
 rate extrapolation, calibrated contact or press windows. Wind-up/active are
 separate from actionable timing. `incoming_cues = false` selects the preceding
 timing engine described below. See [incoming responses](incoming-attacks.md).
 
-The project remains a small Rust Windows x64 DLL. It reads game observations and
-submits a DX11 HUD through hudhook. It does not generate input, write gameplay
-state, alter attack speed/deflect rules or use a network service.
+The project is a Rust Windows x64 DLL that reads game observations and submits
+a DX11 HUD through hudhook. Optional F11 practice starts off and temporarily
+writes eligible enemy animation speed. Its controller and private native writer
+are separate from alert presentation. It does not generate input, alter Wolf's
+speed or deflect windows, edit game/save files or use a network service.
+See [feature boundaries](feature-boundaries.md) and
+[practice behavior and limitations](enemy-speed-practice.md).
 
 ```text
 DLL initialization -> host + executable/DLL hashes -> hooks + worker
 locked target -> current animation batch -> validated capture timestamp
-  -> portable occurrence / rate / hit-phase decision -> shared ImGui renderer
+  -> raw attack kind / hit phase -> alert filtering -> shared ImGui renderer
+  -> fresh advancing target -> practice policy -> owned speed write / restore
+practice applied status -> renderer caption (independent of alert preferences)
 worker config reload / atomic save -> bounded settings snapshot
 research candidate effects -> separate F9 panel and bounded local CSVs
 ```
@@ -86,9 +94,13 @@ not posture detection. `src/windows/cue_draw.rs` is shared with the separate
 communicate state; glow/pulse geometry stays inside the full bounds. The offline
 example is never used as an unlocked gameplay fallback.
 
-`src/input.rs` accepts fresh focused F6..F10 key-down events; every event continues
+`src/input.rs` accepts fresh focused F6..F11 key-down events; every event continues
 to the game. No combat input capture, keyboard hook or synthetic input is added.
 F9 is independent of target validity and cannot bypass gameplay lock-on gating.
+F11 arms practice for the current process only. F8 hiding disarms practice;
+showing the HUD again does not rearm it. Alert response toggles and HUD mode do
+not enable or disable slowdown. The worker runs the speed controller outside
+the render mutex; no speed writes run in the DX11 or animation-hook callbacks.
 
 ## Local evidence
 
@@ -106,7 +118,9 @@ contact and successful-deflect fields remain `unobserved`.
 
 Each CSV stops at 16 MiB; a bounded 512-entry nonblocking queue carries render
 records. F9 shows logging status and dropped records. `diagnostic_logging=false`
-skips data rows. File/log failures never authorize guidance. The separate
+skips general diagnostic data rows. The separate bounded practice-write audit
+remains enabled and records applied/original speed and controller transitions.
+Sparse alerts also record practice status. File/log failures never authorize guidance. The separate
 `reader.rs`/`samples.rs` candidate-effect history retains its own semantics and
 freshness; effect 105010 is not proof of successful deflection.
 
