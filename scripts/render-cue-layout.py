@@ -8,13 +8,15 @@ ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT/'dist/video-tools'))
 from PIL import Image, ImageDraw
 
-folder=Path(sys.argv[1]) if len(sys.argv)>1 else ROOT/'dist/review-0.6/layout'
+folder=Path(sys.argv[1]) if len(sys.argv)>1 else ROOT/'dist/review-0.9.0/layout/default'
 data=json.loads((folder/'mesh.json').read_text())
 aw,ah=data['atlas']
 texture=Image.frombytes('RGBA',(aw,ah),(folder/'atlas.rgba').read_bytes()).load()
 display=data.get('display',[1920,1080])
 origin_x,origin_y,width,height=map(int,data.get('viewport',[0,0,*display]))
-canvas=Image.new('RGB',(width,height),(40,43,46))
+background = Path(sys.argv[sys.argv.index('--background')+1]) if '--background' in sys.argv else None
+canvas=(Image.open(background).convert('RGB').resize((width,height)) if background
+        else Image.new('RGB',(width,height),(40,43,46)))
 pixels=canvas.load()
 for mesh in data['lists']:
     vertices=[[v[0]-origin_x,v[1]-origin_y,*v[2:]] for v in mesh['vertices']]
@@ -44,7 +46,7 @@ for mesh in data['lists']:
 draw=ImageDraw.Draw(canvas)
 version=data.get('version','0.6.3-preview')
 label=data.get('label','overview').upper()
-caption=f'{version} / {label} / OFFLINE RENDER / not gameplay'
+caption=f'{version} / {label} / SYNTHETIC overlay on recorded frame' if background else f'{version} / {label} / OFFLINE RENDER / not gameplay'
 draw.text(((width-draw.textlength(caption))/2,20 if height<1080 else 45),caption,fill=(235,235,235))
 canvas.save(folder/'cue-layout.png')
 print(folder/'cue-layout.png')

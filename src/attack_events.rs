@@ -42,6 +42,9 @@ pub fn select_batch(raw: &[u8; BATCH_BYTES], model: i32) -> Result<Animation, Re
 
 #[derive(Clone, Debug)]
 pub struct Event {
+    pub player_instance: usize,
+    pub animation_module: usize,
+    pub owner_generation: u64,
     pub handle: u32,
     pub model: i32,
     pub kind: &'static str,
@@ -49,50 +52,74 @@ pub struct Event {
     pub phase_time: f32,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Observation {
+    pub player_instance: usize,
+    pub animation_module: usize,
+    pub owner_generation: u64,
+    pub handle: u32,
+    pub model: i32,
+    pub animation: Animation,
+}
+
 #[derive(Default)]
 pub struct Tracker {
-    previous: Option<(u32, i32, Animation)>,
+    previous: Option<Observation>,
 }
 impl Tracker {
-    /// A changed target, animation, sequence or backwards clock ends continuity.
+    /// A changed owner, target, animation or backwards clock ends continuity.
+    /// Raw ring sequence changes are not validated attack-occurrence evidence.
     /// Crossing evidence describes TAE time, never damage or a successful deflect.
-    pub fn update(&mut self, sample: Option<(u32, i32, Animation)>) -> Vec<Event> {
+    pub fn update(&mut self, sample: Option<Observation>) -> Vec<Event> {
         let mut events = Vec::new();
         let continuous = match (self.previous, sample) {
-            (Some((h, m, a)), Some((nh, nm, n))) => {
-                h == nh && m == nm && a.id == n.id && a.sequence == n.sequence && n.time >= a.time
+            (Some(previous), Some(next)) => {
+                previous.player_instance == next.player_instance
+                    && previous.animation_module == next.animation_module
+                    && previous.owner_generation == next.owner_generation
+                    && previous.handle == next.handle
+                    && previous.model == next.model
+                    && previous.animation.id == next.animation.id
+                    && next.animation.time >= previous.animation.time
             }
             _ => false,
         };
         if !continuous {
-            if let Some((handle, model, a)) = self.previous {
-                if a.id >= 0 {
+            if let Some(previous) = self.previous {
+                if previous.animation.id >= 0 {
                     events.push(Event {
-                        handle,
-                        model,
+                        player_instance: previous.player_instance,
+                        animation_module: previous.animation_module,
+                        owner_generation: previous.owner_generation,
+                        handle: previous.handle,
+                        model: previous.model,
                         kind: "track_ended_or_cancelled",
-                        animation: a.id,
-                        phase_time: a.time,
+                        animation: previous.animation.id,
+                        phase_time: previous.animation.time,
                     });
                 }
             }
-            if let Some((handle, model, a)) = sample {
-                if a.id >= 0 {
+            if let Some(next) = sample {
+                if next.animation.id >= 0 {
                     events.push(Event {
-                        handle,
-                        model,
+                        player_instance: next.player_instance,
+                        animation_module: next.animation_module,
+                        owner_generation: next.owner_generation,
+                        handle: next.handle,
+                        model: next.model,
                         kind: "track_started",
-                        animation: a.id,
-                        phase_time: a.time,
+                        animation: next.animation.id,
+                        phase_time: next.animation.time,
                     });
                 }
             }
         }
-        if let Some((handle, model, frame)) = sample {
+        if let Some(observation) = sample {
             // First observation may arrive mid-attack: do not invent prior events.
             if continuous {
-                let from = self.previous.unwrap().2.time;
-                let key = (model, frame.id);
+                let from = self.previous.unwrap().animation.time;
+                let frame = observation.animation;
+                let key = (observation.model, frame.id);
                 let entries = crate::attack_timings::ATTACKS;
                 let first = entries.partition_point(|a| (a.0, a.1) < key);
                 let last = entries.partition_point(|a| (a.0, a.1) <= key);
@@ -103,8 +130,11 @@ impl Tracker {
                     ] {
                         if from < time && frame.time >= time {
                             events.push(Event {
-                                handle,
-                                model,
+                                player_instance: observation.player_instance,
+                                animation_module: observation.animation_module,
+                                owner_generation: observation.owner_generation,
+                                handle: observation.handle,
+                                model: observation.model,
                                 kind,
                                 animation: frame.id,
                                 phase_time: time,
@@ -145,6 +175,16 @@ mod tests {
             raw[slot * 20 + i * 4..slot * 20 + i * 4 + 4].copy_from_slice(&bytes);
         }
     }
+    fn observation(handle: u32, model: i32, animation: Animation) -> Observation {
+        Observation {
+            player_instance: 0x20000,
+            animation_module: 0x30000,
+            owner_generation: 1,
+            handle,
+            model,
+            animation,
+        }
+    }
     #[test]
     fn completed_batch_selects_attack_over_auxiliary_and_rejects_competing_tracks() {
         let mut raw = [0; 224];
@@ -163,27 +203,90 @@ mod tests {
     #[test]
     fn events_are_ordered_once_and_cancelled_tracks_do_not_continue() {
         let mut t = Tracker::default();
-        assert_eq!(t.update(Some((1, 1020, frame(3006, 0.1)))).len(), 1);
-        let events = t.update(Some((1, 1020, frame(3006, 2.0))));
+        assert_eq!(
+            t.update(Some(observation(1, 1020, frame(3006, 0.1)))).len(),
+            1
+        );
+        let events = t.update(Some(observation(1, 1020, frame(3006, 2.0))));
         assert_eq!(events.len(), 4);
         assert!(events
             .windows(2)
             .all(|w| w[0].phase_time <= w[1].phase_time));
-        assert!(t.update(Some((1, 1020, frame(3006, 2.0)))).is_empty());
-        let events = t.update(Some((1, 1020, frame(8010, 0.1))));
+        assert!(t
+            .update(Some(observation(1, 1020, frame(3006, 2.0))))
+            .is_empty());
+        let events = t.update(Some(observation(1, 1020, frame(8010, 0.1))));
         assert_eq!(events[0].kind, "track_ended_or_cancelled");
         assert_eq!(events.len(), 2);
         assert_eq!(t.update(None).len(), 1);
         assert!(t.update(None).is_empty());
     }
     #[test]
+    fn raw_sequence_changes_do_not_invent_attack_occurrences() {
+        let mut tracker = Tracker::default();
+        tracker.update(Some(observation(1, 1010, frame(3000, 0.65))));
+        let mut next = frame(3000, 0.68);
+        next.sequence += 1;
+        let events = tracker.update(Some(observation(1, 1010, next)));
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].kind, "activation_time_crossed");
+    }
+    #[test]
     fn restart_or_target_change_never_replays_old_crossings() {
         let mut t = Tracker::default();
-        t.update(Some((1, 1020, frame(3000, 0.7))));
+        t.update(Some(observation(1, 1020, frame(3000, 0.7))));
         assert!(t
-            .update(Some((2, 1020, frame(3000, 0.75))))
+            .update(Some(observation(2, 1020, frame(3000, 0.75))))
             .iter()
             .all(|e| !e.kind.contains("crossed")));
-        assert_eq!(t.update(Some((2, 1020, frame(3000, 0.1)))).len(), 2);
+        assert_eq!(
+            t.update(Some(observation(2, 1020, frame(3000, 0.1)))).len(),
+            2
+        );
+    }
+
+    #[test]
+    fn owner_or_generation_change_ends_continuity_before_crossings() {
+        let first = Observation {
+            player_instance: 0x20000,
+            animation_module: 0x30000,
+            owner_generation: 7,
+            handle: 1,
+            model: 1010,
+            animation: frame(3000, 0.65),
+        };
+        let mut tracker = Tracker::default();
+        tracker.update(Some(first));
+
+        for changed in [
+            Observation {
+                player_instance: 0x21000,
+                animation: frame(3000, 0.68),
+                ..first
+            },
+            Observation {
+                animation_module: 0x31000,
+                animation: frame(3000, 0.68),
+                ..first
+            },
+            Observation {
+                owner_generation: 8,
+                animation: frame(3000, 0.68),
+                ..first
+            },
+        ] {
+            let events = tracker.update(Some(changed));
+            assert_eq!(events.len(), 2);
+            assert_eq!(events[0].kind, "track_ended_or_cancelled");
+            assert_eq!(events[1].kind, "track_started");
+            assert!(events.iter().all(|event| !event.kind.contains("crossed")));
+            assert_eq!(events[0].player_instance, first.player_instance);
+            assert_eq!(events[0].animation_module, first.animation_module);
+            assert_eq!(events[0].owner_generation, first.owner_generation);
+            assert_eq!(events[1].player_instance, changed.player_instance);
+            assert_eq!(events[1].animation_module, changed.animation_module);
+            assert_eq!(events[1].owner_generation, changed.owner_generation);
+            tracker.update(Some(first));
+        }
     }
 }

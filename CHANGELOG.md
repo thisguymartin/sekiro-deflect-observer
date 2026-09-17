@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.10.0-preview - 2026-09-17 (reference-style top HUD)
+
+- Recreate the supplied screenshots with a slim tapered rail, green parry lead-in,
+  chevron caps, moving diamond, LB/L1/RMB badge and original red vector strike art.
+  Replace the large backing panel with local rail shadows and text outlines.
+- Add the requested top anchor below the enemy posture bar, a 480-wide default
+  and 160..640 width range. Existing explicit anchors remain configurable.
+- Map wind-up progression to the center gate and use white/red for active
+  parryable attack phases. This is not a contact/success indicator. Unknown and
+  special responses remain distinct; reduced-flash suppresses white/red.
+- Export the live vector emblem as an editable SVG and retain 0.9.1's DX11
+  isolation fix. Add a phase-progress regression and verify shared render bounds.
+
+## 0.9.1-preview - 2026-09-17 (DX11 rendering isolation)
+
+- Fix a reproduced graphics-state leak in hudhook 0.9.2: draw on a private
+  deferred context and execute with full host-state restoration. The old manual
+  backup omitted render targets, NULL bindings and implicitly unbound resources.
+- Skip empty draw frames and discard partial command lists on draw errors.
+  Release private backbuffer bindings before a potential resize.
+- Add a real offscreen D3D11 WARP regression for UNORM/sRGB targets, repeated and
+  empty frames, host bindings and unchanged pixels outside the cue.
+- Review the user's 2026-09-17 10-33-30 clip. LOCKED/PARRY and posture clearance
+  are visible. The reported whole-scene tint still needs an in-game comparison
+  with this candidate; no claim of confirmed color correction is made.
+
+## 0.9.0-preview - 2026-09-17 (incoming attack responses)
+
+- Default to incoming move identification without distance/facing or contact
+  prediction. Show PARRY/DODGE/JUMP/MIKIRI/NO PARRY/UNKNOWN during wind-up,
+  fill the lane during the attack phase, and retain LOCKED between attacks.
+- Resolve generic effects, the harmless perilous-warning bullet route and explicit
+  Mikiri dummy hitboxes from freshly extracted parameters. Require unanimous
+  behavior-variant responses; keep conflicting or unknown routes unresolved.
+- Classify 2,161 phases: 1,673 parry, 40 dodge, 56 jump, 63 Mikiri, 16 no-parry
+  and 313 unknown. Preserve separate legacy timing tables and evidence.
+- Add `incoming_cues` and `mikiri` preferences. Mikiri assumes an unlocked skill;
+  disabling it falls back to PARRY for the classified deflectable thrusts.
+- Keep the raised HUD and freshness/lifecycle protections. Add exact response
+  provenance, classifier/runtime regressions and reproducible dispatch disassembly.
+  No full decompilation, contact-result hook or new live gameplay trial is claimed.
+
+## 0.8.1-preview - 2026-09-17 (local correction)
+
+- Raise the fixed cue above the posture decoration measured in the 0.8.0 recording;
+  enlarge the lane and label, and add a dark backing for contrast.
+- Keep LOCKED visible for a freshly validated target when animation data fails
+  or stalls. This neutral state has no press interval or pulse and expires after
+  50 ms without a fresh lock read; losing lock still hides it immediately.
+- Show READY during mapped wind-up before coarse reach passes. Action prompts
+  still require valid timing and reach. Show neutral WATCH for unverified phases.
+- Migrate untouched 0.8.0 layout defaults atomically while preserving customized
+  settings. Add placement, lock feedback, reach and migration regression checks.
+- Windows tests and synthetic render checks do not establish gameplay timing;
+  see docs/validation-0.8.1.md for exact evidence and the remaining live check.
+
+## 0.8.0-preview - 2026-09-16 (local research candidate)
+
+- Preserve original capture age and use stable animation progression with bounded
+  render-time projection; raw ring sequence no longer defines progression or a new attack.
+- Separate READY, defensive press intervals, expiry and evidence-backed per-hit pulses.
+  Latency shifts intervals earlier without widening them. No preferred timing is invented.
+- Default to a compact configured HUD above Wolf's posture bar, with safe full bounds;
+  retain optional overhead mode and independent camera validity.
+- Add bounded local TOML configuration, atomic persistence, reload, F6/F7 saves and F10 reset.
+- Clear timing on lock/owner/clock invalidation, hide on lost focus, preserve Ogre batch
+  selection and response exclusions; reject mixed projectile response classification.
+- Add exact phase coverage ledger, source/DLL identity diagnostics and synthetic regressions.
+  Tables remain 2,161 phases / 54 models / 450 parry / 39 dodge / 58 jump estimates.
+- Contact calibration, Mikiri capability/classification, complete menu/playability reads,
+  actual posture alignment and gameplay outcome validation remain open. No combat rules change.
+
+
 ## 0.7.0-preview
 
 - Observe completed animation batches immediately before the engine advances the ring boundary at researched RVA 0xb5bef0. Require the supported executable hash and exact loaded function hash before installing the native detour.

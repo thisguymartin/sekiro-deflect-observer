@@ -1,5 +1,8 @@
 """Regression checks for import provenance and conservative phase classification."""
 import importlib.util
+import collections
+import csv
+import io
 from pathlib import Path
 import unittest
 from attack_responses import Responses
@@ -15,6 +18,25 @@ def hit(start, end, **extra):
 
 
 class TimingTests(unittest.TestCase):
+    def test_move_coverage_is_derived_from_exact_runtime_rows(self):
+        coverage_path = Path(__file__).with_name('update-move-coverage.py')
+        coverage_spec = importlib.util.spec_from_file_location('coverage', coverage_path)
+        coverage = importlib.util.module_from_spec(coverage_spec)
+        coverage_spec.loader.exec_module(coverage)
+        outputs = coverage.build_outputs(Path(__file__).resolve().parent.parent)
+        rows = list(csv.DictReader(io.StringIO(outputs['docs/boss-move-phases.csv'])))
+        self.assertEqual(len(rows), 2161)
+        self.assertEqual(
+            collections.Counter(row['response'] for row in rows),
+            {'unverified': 1614, 'parry': 450, 'jump': 58, 'dodge': 39},
+        )
+        self.assertTrue(all(row['calibrated'] == 'false' for row in rows))
+        self.assertTrue(all(row['gameplay_validated'] == 'false' for row in rows))
+        self.assertIn(
+            '3d0c108cb3412fa91f43da0f08a819cd12d792431fc027f0c132854dc0aded3d',
+            outputs['docs/boss-move-coverage.md'],
+        )
+
     def test_cycle_and_missing_source_are_rejected(self):
         for data in [{1: dict(imports_animation=1, events=[])},
                      {1: dict(imports_animation=2, events=[])}]:
@@ -63,6 +85,47 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(responses.row_kind(100,row),'dodge')
         row['throwFlag']=2
         self.assertEqual(responses.row_kind(100,row),'unverified')
+
+    def test_mixed_projectile_event_excludes_every_action_response(self):
+        rows = [
+            ('parry_candidate', 'c1010_Sword', dict(
+                throwFlag=0, disableJustGuard_vsGuardAttribute0=0,
+                disableJustGuard_vsGuardAttribute1=0)),
+            ('dodge', 'c1010_Grab', dict(
+                throwFlag=1, disableJustGuard_vsGuardAttribute0=0,
+                disableJustGuard_vsGuardAttribute1=0)),
+            ('jump', 'c1010_Sword sweep', dict(
+                throwFlag=0, disableJustGuard_vsGuardAttribute0=1,
+                disableJustGuard_vsGuardAttribute1=1)),
+        ]
+        for index, (response, name, row) in enumerate(rows, start=1):
+            responses = Responses.__new__(Responses)
+            responses.names = {str(index): name}
+            responses.attacks = {str(index): row}
+            responses.behaviors = collections.defaultdict(list, {
+                (1010, 3000): [dict(refId=index, refType=0)]
+            })
+            with self.subTest(response=response):
+                self.assertEqual(
+                    responses.phase(1010, [hit(1, 1.2), dict(type=4)], 1, 1.2, True),
+                    ('unverified', [index]),
+                )
+
+    def test_response_parameters_survive_generic_special_markers(self):
+        responses = Responses.__new__(Responses)
+        responses.names = {'1': 'c5020_Grab'}
+        responses.attacks = {'1': dict(
+            throwFlag=1, disableJustGuard_vsGuardAttribute0=0,
+            disableJustGuard_vsGuardAttribute1=0)}
+        responses.behaviors = collections.defaultdict(list, {
+            (5020, 3000): [dict(refId=1, refType=0)]
+        })
+        markers = [dict(type=2), dict(type=66), dict(type=67), dict(type=304),
+                   dict(type=700, look_target_type=7)]
+        self.assertEqual(
+            responses.phase(5020, [hit(1, 1.2), *markers], 1, 1.2, True),
+            ('dodge', [1]),
+        )
 
     def test_parameter_layout_handles_bitfields_and_rejects_mismatched_files(self):
         spec=importlib.util.spec_from_file_location('params',Path(__file__).with_name('inspect-attack-params.py'))

@@ -1,85 +1,69 @@
-//! Emit the actual ImGui draw mesh for a reproducible, offline visual check.
+//! Emit the actual ImGui draw mesh for a reproducible, synthetic visual check.
 //! No game reads, hooks, DLL loading, or input generation.
 use hudhook::imgui::{self, DrawCmd};
-use sekiro_deflect_observer::cue;
+pub use sekiro_deflect_observer::hud_art;
+use sekiro_deflect_observer::{config, cue, layout, timing};
 use std::fs::{self, File};
 use std::io::Write;
+use std::time::Duration;
 
 mod diagnostics {
-    use super::cue;
+    use super::timing;
+
     #[derive(Default)]
     pub(super) struct RenderSample {
         pub status: &'static str,
         pub position: Option<[f32; 2]>,
-        pub phase: Option<cue::Timeline>,
+        pub decision: timing::Decision,
+        pub layout_mode: &'static str,
+        pub surface: [f32; 2],
+        pub viewport: [f32; 4],
+        pub bounds: Option<[f32; 4]>,
     }
 }
 #[path = "../src/windows/cue_draw.rs"]
 mod cue_draw;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let output = std::env::args_os()
-        .nth(1)
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| "dist/review-0.6/layout".into());
-    fs::create_dir_all(&output)?;
     let args: Vec<String> = std::env::args().collect();
-    let gallery = args.iter().any(|arg| arg == "--gallery");
-    let state = args
-        .iter()
-        .position(|arg| arg == "--state")
-        .map(|i| {
-            args.get(i + 1)
-                .map(String::as_str)
-                .ok_or("Missing --state value")
-        })
-        .transpose()?;
-    if gallery && state.is_some() {
-        return Err("Choose --gallery or --state, not both".into());
-    }
-    let scenarios = match state {
-        Some("ready") => vec![(1010, 3000, 0.3)],
-        Some("parry") => vec![(1010, 3000, 0.60)],
-        Some("dodge") => vec![(5020, 100003005, 0.45)],
-        Some("jump") => vec![(5100, 100003009, 1.05)],
-        Some("unverified") => vec![(1010, 3005, 0.90)],
-        Some("locked") => vec![(1010, -1, 0.0)],
-        Some(_) => {
-            return Err("State must be ready, parry, dodge, jump, unverified or locked".into())
-        }
-        None => vec![
-            (1010, 3000, 0.3),
-            (1010, 3000, 0.60),
-            (5020, 100003005, 0.45),
-            (5100, 100003009, 1.05),
-        ],
-    };
-    let custom_display = args
-        .iter()
-        .position(|arg| arg == "--display")
-        .map(|i| {
-            let width: f32 = args
-                .get(i + 1)
-                .ok_or("Missing display width")?
-                .parse()
-                .map_err(|_| "Invalid display width")?;
-            let height: f32 = args
-                .get(i + 2)
-                .ok_or("Missing display height")?
-                .parse()
-                .map_err(|_| "Invalid display height")?;
-            if ![width, height].iter().all(|v| v.is_finite() && *v > 0.0) {
-                return Err("Display dimensions must be finite and positive");
-            }
-            Ok([width, height])
-        })
-        .transpose()?;
-    let display = if let Some(display) = custom_display {
-        display
+    let output = args
+        .get(1)
+        .filter(|arg| !arg.starts_with("--"))
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| "dist/review-0.9.0/layout/default".into());
+    fs::create_dir_all(&output)?;
+    fs::write(output.join("strike-emblem.svg"), hud_art::strike_svg())?;
+    let incoming_gallery = args.iter().any(|arg| arg == "--incoming-gallery");
+    let gallery = incoming_gallery || args.iter().any(|arg| arg == "--gallery");
+    let no_camera = args.iter().any(|arg| arg == "--no-camera");
+    let state = option(&args, "--state").unwrap_or("parry");
+    let display = parse_display(&args)?.unwrap_or([1920.0, 1080.0]);
+    let scale = option(&args, "--scale")
+        .map(str::parse)
+        .transpose()?
+        .unwrap_or(1.0_f32);
+    let camera_aspect = option(&args, "--aspect")
+        .map(str::parse)
+        .transpose()?
+        .unwrap_or(16.0_f32 / 9.0);
+
+    let states: Vec<&str> = if incoming_gallery {
+        vec![
+            "incoming-parry",
+            "active-parry",
+            "incoming-dodge",
+            "incoming-jump",
+            "incoming-mikiri",
+            "incoming-avoid",
+            "incoming-unknown",
+            "locked",
+        ]
     } else if gallery {
-        [960.0, 540.0]
+        vec![
+            "ready", "parry", "dodge", "jump", "expired", "watch", "locked",
+        ]
     } else {
-        [1920.0, 1080.0]
+        vec![state]
     };
     let mut context = imgui::Context::create();
     context.set_ini_filename(None);
@@ -90,83 +74,110 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     context.io_mut().display_size = display;
     context.io_mut().delta_time = 1.0 / 60.0;
     let ui = context.frame();
-    let camera = cue::Camera {
-        right: [1.0, 0.0, 0.0],
-        up: [0.0, 1.0, 0.0],
-        forward: [0.0, 0.0, 1.0],
-        position: [0.0; 3],
-        fov: 1.0,
-        aspect: 16.0 / 9.0,
-        near: 0.08,
-        far: 1000.0,
-    };
-    for (row, (model, animation, time)) in scenarios.into_iter().enumerate() {
-        let y = if state.is_some() {
-            display[1] / 2.0
-        } else if gallery {
-            105.0 + row as f32 * 110.0
-        } else {
-            180.0 + row as f32 * 230.0
+    let mut measurements = Vec::new();
+    for (row, state) in states.iter().enumerate() {
+        let (mut target, decision) = synthetic(state, camera_aspect)?;
+        if no_camera {
+            target.camera = None;
+        }
+        let expected = expected_state(state);
+        if decision.state != expected {
+            return Err(format!(
+                "synthetic {state} produced {:?}, expected {:?}: {}",
+                decision.state, expected, decision.reason
+            )
+            .into());
+        }
+        let mut config = config::Config {
+            scale,
+            ..config::Config::default()
         };
-        let anchor_y = (1.0 - y / (display[1] / 2.0)) * 5.0 * (0.5_f32).tan();
-        let target = cue::Target {
-            animation_module: 0,
-            handle: 1,
-            model,
-            animation: cue::Animation {
-                id: animation,
-                previous: time - 0.016,
-                time,
-                sequence: 1,
-            },
-            position: [0.0, 0.0, 2.0],
-            anchor: [0.0, anchor_y, 5.0],
-            facing: [0.0, 0.0, -1.0],
-            player_position: [0.0; 3],
-            body_radius: 0.0,
-            camera,
-            animation_error: None,
-        };
-        cue_draw::draw(
-            ui,
-            &target,
-            true,
-            0,
-            &fonts,
-            &mut diagnostics::RenderSample::default(),
-        );
+        if args.iter().any(|arg| arg == "--posture") {
+            config.anchor = config::AnchorMode::Posture;
+        }
+        if args.iter().any(|arg| arg == "--reduced-flash") {
+            config.reduced_flash = true;
+        }
+        if gallery {
+            config.offset_y = row as f32 * 98.0;
+        }
+        let mut submitted = diagnostics::RenderSample::default();
+        cue_draw::draw(ui, &target, &decision, &config, &fonts, &mut submitted);
+        measurements.push((state.to_string(), submitted));
     }
     let data = context.render();
     if data.total_vtx_count == 0 {
-        return Err("The offline camera produced no drawable cue geometry".into());
+        return Err("synthetic renderer produced no cue geometry".into());
     }
+    for vertex in data.draw_lists().flat_map(|list| list.vtx_buffer().iter()) {
+        let contained = measurements.iter().any(|(_, sample)| {
+            sample.bounds.is_some_and(|bounds| {
+                vertex.pos[0] >= bounds[0] - 0.25
+                    && vertex.pos[0] <= bounds[2] + 0.25
+                    && vertex.pos[1] >= bounds[1] - 0.25
+                    && vertex.pos[1] <= bounds[3] + 0.25
+                    && vertex.pos[0] >= sample.viewport[0]
+                    && vertex.pos[0] <= sample.viewport[2]
+                    && vertex.pos[1] >= sample.viewport[1]
+                    && vertex.pos[1] <= sample.viewport[3]
+            })
+        });
+        if !contained {
+            return Err(format!("draw vertex {:?} escaped measured cue bounds", vertex.pos).into());
+        }
+    }
+
     let mut file = File::create(output.join("mesh.json"))?;
-    // Render a region of the full-resolution geometry for documentation close-ups.
-    // Camera projection and the live overlay's 1080p scale are unchanged.
-    let viewport = if state.is_some() && custom_display.is_none() {
-        [660.0, 410.0, 600.0, 210.0]
-    } else {
-        [0.0, 0.0, display[0], display[1]]
-    };
-    let label = state.unwrap_or("overview");
+    let label = if gallery { "gallery" } else { state };
     let version = env!("CARGO_PKG_VERSION");
     write!(
         file,
-        "{{\"atlas\":[{aw},{ah}],\"display\":{display:?},\"viewport\":{viewport:?},\"label\":\"{label}\",\"version\":\"{version}\",\"lists\":["
+        "{{\"atlas\":[{aw},{ah}],\"display\":{display:?},\"viewport\":[0,0,{},{}],\"label\":\"{label}\",\"synthetic\":true,\"version\":\"{version}\",\"measurements\":[",
+        display[0], display[1]
     )?;
+    for (index, (name, sample)) in measurements.iter().enumerate() {
+        if index > 0 {
+            write!(file, ",")?;
+        }
+        write!(
+            file,
+            "{{\"state\":\"{}\",\"decision\":\"{}\",\"reason\":\"{}\",\"layout\":\"{}\",\"position\":{},\"playable_viewport\":{:?},\"bounds\":{}}}",
+            name,
+            sample.decision.state.label(),
+            sample.status,
+            sample.layout_mode,
+            sample.position.map_or_else(
+                || "null".to_string(),
+                |value| format!("[{},{}]", value[0], value[1]),
+            ),
+            sample.viewport,
+            sample.bounds.map_or_else(
+                || "null".to_string(),
+                |value| format!("[{},{},{},{}]", value[0], value[1], value[2], value[3]),
+            )
+        )?;
+    }
+    write!(file, "],\"lists\":[")?;
     for (n, list) in data.draw_lists().enumerate() {
         if n > 0 {
             write!(file, ",")?;
         }
         write!(file, "{{\"vertices\":[")?;
-        for (i, v) in list.vtx_buffer().iter().enumerate() {
+        for (i, vertex) in list.vtx_buffer().iter().enumerate() {
             if i > 0 {
                 write!(file, ",")?;
             }
             write!(
                 file,
                 "[{},{},{},{},{},{},{},{}]",
-                v.pos[0], v.pos[1], v.uv[0], v.uv[1], v.col[0], v.col[1], v.col[2], v.col[3]
+                vertex.pos[0],
+                vertex.pos[1],
+                vertex.uv[0],
+                vertex.uv[1],
+                vertex.col[0],
+                vertex.col[1],
+                vertex.col[2],
+                vertex.col[3]
             )?;
         }
         write!(file, "],\"indices\":{:?},\"commands\":[", list.idx_buffer())?;
@@ -188,4 +199,119 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     write!(file, "]}}")?;
     Ok(())
+}
+
+fn option<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
+    args.iter()
+        .position(|arg| arg == name)
+        .and_then(|index| args.get(index + 1))
+        .map(String::as_str)
+}
+
+fn parse_display(args: &[String]) -> Result<Option<[f32; 2]>, &'static str> {
+    let Some(index) = args.iter().position(|arg| arg == "--display") else {
+        return Ok(None);
+    };
+    let width = args
+        .get(index + 1)
+        .ok_or("missing display width")?
+        .parse::<f32>()
+        .map_err(|_| "invalid display width")?;
+    let height = args
+        .get(index + 2)
+        .ok_or("missing display height")?
+        .parse::<f32>()
+        .map_err(|_| "invalid display height")?;
+    if [width, height]
+        .iter()
+        .all(|value| value.is_finite() && *value > 0.0)
+    {
+        Ok(Some([width, height]))
+    } else {
+        Err("display dimensions must be finite and positive")
+    }
+}
+
+fn expected_state(name: &str) -> timing::State {
+    match name {
+        "incoming-parry" | "incoming-dodge" | "incoming-jump" | "incoming-mikiri"
+        | "incoming-avoid" | "incoming-unknown" => timing::State::Incoming,
+        "active-parry" => timing::State::AttackActive,
+        "ready" => timing::State::Preparation,
+        "parry" | "dodge" | "jump" => timing::State::Actionable,
+        "expired" => timing::State::Expired,
+        "watch" | "locked" => timing::State::Neutral,
+        _ => timing::State::Hidden,
+    }
+}
+
+fn synthetic(
+    state: &str,
+    camera_aspect: f32,
+) -> Result<(cue::Target, timing::Decision), Box<dyn std::error::Error>> {
+    let (model, animation, time) = match state {
+        "incoming-parry" => (1020, 3003, 0.300),
+        "active-parry" => (1020, 3003, 0.960),
+        "incoming-dodge" => (5020, 100003005, 0.300),
+        "incoming-jump" => (5100, 100003009, 0.800),
+        "incoming-mikiri" => (1550, 3003, 0.450),
+        "incoming-avoid" => (5000, 3005, 0.600),
+        "incoming-unknown" => (1020, 3004, 0.500),
+        "ready" => (1010, 3000, 0.300),
+        "parry" => (1010, 3000, 0.600),
+        "dodge" => (5020, 100003005, 0.450),
+        "jump" => (5100, 100003009, 1.050),
+        "expired" => (1010, 3000, 0.720),
+        "watch" => (1550, 3003, 0.450),
+        "locked" => (1010, -1, 0.300),
+        _ => {
+            return Err("state must be ready, parry, dodge, jump, expired, watch, or locked".into())
+        }
+    };
+    let camera = cue::Camera {
+        right: [1.0, 0.0, 0.0],
+        up: [0.0, 1.0, 0.0],
+        forward: [0.0, 0.0, 1.0],
+        position: [0.0; 3],
+        fov: 1.0,
+        aspect: camera_aspect,
+        near: 0.08,
+        far: 1000.0,
+    };
+    let mut target = cue::Target {
+        metadata: Default::default(),
+        captured_at: Some(Duration::ZERO),
+        player_instance: 1,
+        animation_module: 2,
+        handle: 3,
+        model,
+        animation: cue::Animation {
+            id: animation,
+            previous: time - 0.048,
+            time: time - 0.032,
+            sequence: 1,
+        },
+        position: [0.0, 0.0, 2.0],
+        anchor: [0.0, 1.0, 5.0],
+        facing: [0.0, 0.0, -1.0],
+        player_position: [0.0; 3],
+        body_radius: 0.0,
+        camera: Some(camera),
+        animation_error: None,
+    };
+    let mut engine = timing::Engine::default();
+    for (step, milliseconds) in [0_u64, 16, 32].into_iter().enumerate() {
+        let at = Duration::from_millis(milliseconds);
+        target.captured_at = Some(at);
+        target.animation.previous = target.animation.time;
+        target.animation.time = time - 0.032 + step as f32 * 0.016;
+        target.animation.sequence = step as i32 + 1;
+        engine.observe(at, Some(&target));
+    }
+    let decision = if state.starts_with("incoming-") || state.starts_with("active-") {
+        engine.incoming(Duration::from_millis(32), [true; 3], true)
+    } else {
+        engine.decide(Duration::from_millis(32))
+    };
+    Ok((target, decision))
 }

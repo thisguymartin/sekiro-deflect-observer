@@ -24,10 +24,11 @@ try {
     $staging = Join-Path $dist ([Guid]::NewGuid().ToString())
     New-Item -ItemType Directory -Path $staging | Out-Null
     Copy-Item -LiteralPath $dll -Destination $staging
-    foreach ($name in @('observer.me3', 'launch-observer.cmd', 'README.txt')) {
+    foreach ($name in @('observer.me3', 'launch-observer.cmd', 'README.txt', 'cue.toml')) {
         Copy-Item -LiteralPath (Join-Path $projectRoot "packaging/$name") -Destination $staging
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $staging
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'assets/ui/strike-emblem.svg') -Destination $staging
 
     $notice = [System.Text.StringBuilder]::new()
     [void]$notice.AppendLine('Dependency licenses for this locked Windows build, including build-time tools.')

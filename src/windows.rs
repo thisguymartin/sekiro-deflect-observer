@@ -2,7 +2,7 @@ use std::ffi::c_void;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use hudhook::hooks::dx11::ImguiDx11Hooks;
@@ -32,6 +32,17 @@ extern "system" {
     ) -> *mut c_void;
     fn CloseHandle(handle: *mut c_void) -> i32;
     fn OutputDebugStringW(message: *const u16);
+    fn GetModuleFileNameW(module: *mut c_void, name: *mut u16, size: u32) -> u32;
+}
+
+#[link(name = "user32")]
+extern "system" {
+    fn GetWindowThreadProcessId(window: HWND, process_id: *mut u32) -> u32;
+}
+fn game_has_focus() -> bool {
+    let mut process_id = 0;
+    let thread = unsafe { GetWindowThreadProcessId(GetForegroundWindow(), &mut process_id) };
+    thread != 0 && process_id == std::process::id()
 }
 
 #[no_mangle]
@@ -76,6 +87,17 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
         &mut log,
         &format!("Observer {} starting", env!("CARGO_PKG_VERSION")),
     )?;
+    let mut module_name = vec![0_u16; 32768];
+    let length =
+        unsafe { GetModuleFileNameW(module, module_name.as_mut_ptr(), module_name.len() as u32) }
+            as usize;
+    if length == 0 || length >= module_name.len() {
+        return Err("could not identify loaded DLL path".into());
+    }
+    use std::os::windows::ffi::OsStringExt;
+    let module_path = PathBuf::from(std::ffi::OsString::from_wide(&module_name[..length]));
+    let dll_hash = identity::sha256(&mut File::open(module_path)?)?;
+    log_event(&mut log, &format!("Loaded DLL SHA256: {dll_hash}"))?;
     let executable = std::env::current_exe()?;
     if !executable.file_name().is_some_and(identity::is_sekiro_host) {
         return Err("host is not sekiro.exe; rendering hooks were not installed".into());
@@ -88,15 +110,12 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
         "Diagnostic reader: candidate effect 105010; deflect-window semantics NOT validated.",
     )?;
 
-    let diagnostics = diagnostics::Diagnostics::start(fingerprint.clone())?;
+    let diagnostics = diagnostics::Diagnostics::start(fingerprint.clone(), dll_hash)?;
     let overlay = Observer {
-        visible: AtomicBool::new(true),
-        debug: AtomicBool::new(false),
         fingerprint: fingerprint.clone(),
         diagnostics,
         cue_fonts: Vec::new(),
         frame: 0,
-        vertical_adjust: AtomicI32::new(0),
     };
     Hudhook::builder()
         .with::<ImguiDx11Hooks>(overlay)
@@ -110,7 +129,7 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
     }
     log_event(
         &mut log,
-        "Hooks installed. Overhead activation-estimate preview; contact timing unvalidated. F8: visibility; F9: diagnostics.",
+        "Hooks installed. Incoming attack response HUD by default; no reach/contact prediction. Optional legacy timing mode. F6/F7: persist placement; F8: visibility; F9: diagnostics; F10: reset offsets.",
     )?;
     Ok(())
 }
@@ -152,13 +171,10 @@ fn report_failure(message: &str) {
 }
 
 struct Observer {
-    visible: AtomicBool,
-    debug: AtomicBool,
     fingerprint: String,
     diagnostics: diagnostics::Diagnostics,
     cue_fonts: Vec<(f32, usize)>,
     frame: u64,
-    vertical_adjust: AtomicI32,
 }
 
 impl ImguiRenderLoop for Observer {
@@ -182,21 +198,32 @@ impl ImguiRenderLoop for Observer {
         if input::is_visibility_toggle(message, key.0, flags.0)
             && unsafe { GetForegroundWindow() } == hwnd
         {
-            self.visible.fetch_xor(true, Ordering::Relaxed);
+            let value = !self.diagnostics.visible.fetch_xor(true, Ordering::Relaxed);
+            if !value {
+                self.diagnostics
+                    .gate
+                    .invalidate(self.diagnostics.epoch.elapsed());
+            }
+            self.diagnostics
+                .command(diagnostics::Command::Visibility(value));
         }
         if input::is_diagnostics_toggle(message, key.0, flags.0)
             && unsafe { GetForegroundWindow() } == hwnd
         {
-            self.debug.fetch_xor(true, Ordering::Relaxed);
+            let value = !self.diagnostics.debug.fetch_xor(true, Ordering::Relaxed);
+            self.diagnostics
+                .command(diagnostics::Command::Diagnostics(value));
         }
         if let Some(delta) = input::placement_adjustment(message, key.0, flags.0) {
             if unsafe { GetForegroundWindow() } == hwnd {
-                let _ = self.vertical_adjust.fetch_update(
-                    Ordering::Relaxed,
-                    Ordering::Relaxed,
-                    |value| Some((value + delta).clamp(-160, 160)),
-                );
+                self.diagnostics
+                    .command(diagnostics::Command::Placement(delta as f32));
             }
+        }
+        if input::is_placement_reset(message, key.0, flags.0)
+            && unsafe { GetForegroundWindow() } == hwnd
+        {
+            self.diagnostics.command(diagnostics::Command::Reset);
         }
         BeforeWndProc::Continue
     }
@@ -214,53 +241,119 @@ impl ImguiRenderLoop for Observer {
             status: "hidden",
             ..Default::default()
         };
-        if !self.visible.load(Ordering::Relaxed) {
-            self.diagnostics.record_render(submitted);
-            return;
-        }
-        let (target, advancing, cue_status, sample_age) = match self.diagnostics.cue.lock() {
-            Ok(state) => {
-                let age = state.latest.as_ref().map_or(0.0, |(at, _)| {
-                    now.saturating_sub(*at).as_secs_f64() * 1000.0
-                });
-                let status = if state.latest.is_some() && state.current(now).is_none() {
-                    "stale_sample"
-                } else if state.read_error.is_some() {
-                    state.read_error.unwrap().label()
-                } else if state.trace.stage.is_empty() {
-                    "waiting_for_reader"
-                } else {
-                    state.trace.stage
-                };
-                (
-                    state.current(now).cloned(),
-                    state.advancing(now),
-                    status,
-                    age,
-                )
-            }
-            Err(_) => (None, false, "reader_unavailable", 0.0),
-        };
-        submitted.status = cue_status;
-        submitted.sample_age_ms = sample_age;
-        if let Some(target) = target.as_ref() {
-            submitted.handle = target.handle;
-            submitted.model = target.model;
-            submitted.animation = target.animation.id;
-            submitted.animation_time = target.animation.time;
-            submitted.sequence = target.animation.sequence;
-            cue_draw::draw(
-                ui,
-                target,
-                advancing,
-                self.vertical_adjust.load(Ordering::Relaxed),
-                &self.cue_fonts,
-                &mut submitted,
-            );
-        }
+        let focused = game_has_focus();
+        submitted.generation = self.diagnostics.gate.generation();
+        submitted.invalidated_at = self.diagnostics.gate.invalidated_at();
+        submitted.surface = ui.io().display_size;
+        submitted.display_mode = "unobserved_record_in_trial";
+        let (target, advancing, cue_status, sample_age, config_diagnostic, inactive_profiles) =
+            match self.diagnostics.cue.lock() {
+                Ok(mut state) => {
+                    let now = self.diagnostics.epoch.elapsed();
+                    submitted.at = now;
+                    submitted.generation = self.diagnostics.gate.generation();
+                    submitted.invalidated_at = self.diagnostics.gate.invalidated_at();
+                    let target = state.live.current_lock(now).cloned();
+                    let age = now
+                        .saturating_sub(state.observation_metadata.read_start)
+                        .as_secs_f64()
+                        * 1000.0;
+                    submitted.metadata = state.observation_metadata;
+                    let status = if state.live.latest.is_some() && target.is_none() {
+                        "stale_sample"
+                    } else if let Some(error) = state.live.read_error {
+                        error.label()
+                    } else if state.live.trace.stage.is_empty() {
+                        "waiting_for_reader"
+                    } else {
+                        state.live.trace.stage
+                    };
+                    submitted.status = status;
+                    submitted.sample_age_ms = age;
+                    submitted.observed_at = Some(state.observation_metadata.read_start);
+                    let settings = state.settings.clone();
+                    let profiles = state.profiles.clone();
+                    if !self.diagnostics.gate.accepts(state.generation)
+                        || !self.diagnostics.visible.load(Ordering::Relaxed)
+                        || !focused
+                        || target.is_none()
+                    {
+                        state.engine.clear();
+                        submitted.status = if !focused {
+                            "unfocused"
+                        } else if !self.diagnostics.visible.load(Ordering::Relaxed) {
+                            "hidden_by_user"
+                        } else if !self.diagnostics.gate.accepts(state.generation) {
+                            "invalidated_before_publish"
+                        } else {
+                            status
+                        };
+                    } else if let Some(target) = target.as_ref() {
+                        submitted.handle = target.handle;
+                        submitted.model = target.model;
+                        submitted.animation = target.animation.id;
+                        submitted.animation_time = target.animation.time;
+                        submitted.sequence = target.animation.sequence;
+                        submitted.captured_at = target.captured_at.or_else(|| {
+                            (target.metadata.source == "poll").then_some(target.metadata.read_start)
+                        });
+                        submitted.metadata = target.metadata;
+                        submitted.decision = if state.config.incoming_cues {
+                            state
+                                .engine
+                                .incoming(now, settings.enabled, state.config.mikiri)
+                        } else {
+                            state.engine.decide_with(now, &settings, &profiles)
+                        };
+                        if submitted.decision.calibrated {
+                            if let Some(profile) = state.config.profiles.iter().find(|p| {
+                                p.model == target.model
+                                    && p.animation == target.animation.id
+                                    && Some(p.phase) == submitted.decision.phase
+                                    && p.form == "model-animation-phase"
+                            }) {
+                                submitted.profile_evidence = profile.evidence.clone();
+                                submitted.profile_scope =
+                                    format!("{} / {}", profile.encounter, profile.form);
+                                submitted.profile_trials = format!(
+                                    "{};{};{}",
+                                    profile.trials, profile.successes, profile.failures
+                                );
+                            }
+                        }
+                        // Last check immediately before submitting any cue geometry.
+                        if self.diagnostics.gate.accepts(state.generation) {
+                            cue_draw::draw(
+                                ui,
+                                target,
+                                &submitted.decision.clone(),
+                                &state.config,
+                                &self.cue_fonts,
+                                &mut submitted,
+                            );
+                        } else {
+                            submitted.status = "invalidated_before_draw";
+                        }
+
+                        if submitted.position.is_none() {
+                            state.engine.clear();
+                            submitted.decision = crate::timing::Decision::default();
+                        }
+                    }
+                    (
+                        target,
+                        state.live.advancing(now),
+                        status,
+                        age,
+                        state.config_diagnostic.clone(),
+                        state.config.profiles.len() - state.profiles.len(),
+                    )
+                }
+                Err(_) => (None, false, "reader_unavailable", 0.0, String::new(), 0),
+            };
         let render_status = submitted.status;
         self.diagnostics.record_render(submitted);
-        if !self.debug.load(Ordering::Relaxed) {
+        if !self.diagnostics.debug.load(Ordering::Relaxed) {
             return;
         }
         let (state, reason, count, age_ms, read_ms, last_present_ms, transitions) =
@@ -339,6 +432,20 @@ impl ImguiRenderLoop for Observer {
                 ui.separator();
                 ui.text(format!("Cue reader: {cue_status} | age {sample_age:.1} ms"));
                 ui.text(format!("Overlay: {render_status}"));
+                if !config_diagnostic.is_empty() {
+                    ui.text_wrapped(format!("Configuration: {config_diagnostic}"));
+                }
+                let dropped = self.diagnostics.command_dropped.load(Ordering::Relaxed);
+                if dropped > 0 {
+                    ui.text(format!(
+                        "Settings commands dropped: {dropped}; repeat the last change"
+                    ));
+                }
+                if inactive_profiles > 0 {
+                    ui.text(format!(
+                        "Inactive profiles: {inactive_profiles}; runtime form is unobserved"
+                    ));
+                }
                 ui.text(format!(
                     "Event hook: {} | batches: {} | missed captures: {}",
                     crate::event_hook::enabled(),
@@ -350,7 +457,9 @@ impl ImguiRenderLoop for Observer {
                     let display = ui.io().display_size;
                     ui.text(format!(
                         "Surface: {:.0} x {:.0} | camera aspect: {:.4}",
-                        display[0], display[1], target.camera.aspect
+                        display[0],
+                        display[1],
+                        target.camera.map_or(0.0, |c| c.aspect)
                     ));
                     ui.text(format!(
                         "Locked model c{:04} | anim {} @ {:.3}s",
@@ -361,6 +470,15 @@ impl ImguiRenderLoop for Observer {
                         crate::cue::attack_mapped(target),
                         advancing,
                         crate::cue::special_attack(target)
+                    ));
+                    let reach = crate::cue::reach(target);
+                    ui.text(format!(
+                        "Coarse gate: {} | distance {:.2}/{:.2} | height {:.2}",
+                        reach.reason, reach.distance, reach.distance_limit, reach.vertical_delta
+                    ));
+                    ui.text(format!(
+                        "Facing length {:.3} | cosine {:?} (not collision)",
+                        reach.facing_length, reach.facing_cosine
                     ));
                 }
                 ui.text(format!(
@@ -395,8 +513,8 @@ impl ImguiRenderLoop for Observer {
                 }
                 ui.text(format!("Executable SHA256: {}...", &self.fingerprint[..12]));
                 ui.separator();
-                ui.text("Cue preview: activation estimate; contact not validated.");
-                ui.text("F6/F7: lower/raise bar. F8: visibility. F9: diagnostics.");
+                ui.text("Incoming labels identify move responses; they do not predict contact.");
+                ui.text("F6/F7: persist lower/raise. F8: cue. F9: research. F10: reset offsets.");
             });
     }
 }

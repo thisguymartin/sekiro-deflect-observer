@@ -1,0 +1,61 @@
+# Sekiro Deflect Observer configuration
+# Install as %LOCALAPPDATA%/SekiroDeflectObserver/cue.toml.
+# Every omitted setting uses the value shown here.
+
+# Show the incoming move and defensive response without predicting contact.
+incoming_cues = true
+# Set false if Mikiri Counter is not unlocked; eligible thrusts then show PARRY.
+# This preference does not detect the skill or its availability in game memory.
+mikiri = true
+
+# top matches the reference placement below the enemy's upper posture bar.
+# posture uses a fixed screen-space lane above Wolf's configured posture band.
+# overhead requires a valid camera projection and is suppressed when offscreen.
+anchor = "top"
+parry_button = "LB"         # LB, L1, or RMB; set to your actual binding
+offset_x = 0.0              # -480..480 reference pixels
+offset_y = 0.0              # -160..160 reference pixels
+scale = 1.0                 # 0.5..1.5
+width = 480.0               # 160..640 reference pixels
+opacity = 0.95              # 0.2..1.0
+label_size = 30.0           # 14..30 reference pixels
+safe_margin = 24.0          # 8..96 reference pixels
+posture_band_top = 0.85     # 0.75..0.98 of the configured viewport
+posture_gap = 12.0          # 8..64 reference pixels
+outline_intensity = 0.8     # 0..1
+glow_intensity = 0.35       # 0..1
+pulse_intensity = 0.6       # 0..1
+pulse_duration_ms = 80.0    # 16..120 real milliseconds
+reduced_flash = false
+
+# READY begins this many real milliseconds before the press interval.
+preparation_ms = 650.0      # 350..1500 real milliseconds
+# Positive display/input latency shifts the whole interval earlier. Each is
+# 0..120 real milliseconds and their sum may not exceed 150.
+display_latency_ms = 0.0
+input_latency_ms = 0.0
+# Estimated response widths may only be narrowed from these defaults.
+parry_lead_ms = 150.0       # 25..150 animation milliseconds
+dodge_lead_ms = 300.0       # 25..300 animation milliseconds
+jump_lead_ms = 300.0        # 25..300 animation milliseconds
+
+# These switches can restrict an existing classification; they cannot make an
+# unclassified move eligible or bypass lock, hash, freshness, or capability checks.
+parry = true
+dodge = true
+jump = true
+visible = true             # F8 toggles and persists this value
+diagnostics = false        # F9 toggles and persists this value
+diagnostic_logging = true
+
+# Calibrated profiles are opt-in. Remove this line before adding [[profiles]]
+# tables as described in docs/configuration.md.
+profiles = []
+
+[colors]
+# Colors must be exactly #RRGGBBAA. Alpha must be at least 0x80.
+parry = "#2EF245F2"
+dodge = "#FF661FFF"
+jump = "#2ECCFFFF"
+ready = "#E0E5EBFF"
+expired = "#899099CC"

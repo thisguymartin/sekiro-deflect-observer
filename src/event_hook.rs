@@ -21,12 +21,14 @@ pub static DROPPED: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Owner {
+    player: usize,
     module: usize,
     handle: u32,
     model: i32,
 }
 #[derive(Clone, Copy)]
 struct Snapshot {
+    id: u64,
     at: Instant,
     frame: Result<cue::Animation, reader::ReadError>,
 }
@@ -43,8 +45,12 @@ impl State {
             self.generation = self.generation.wrapping_add(1);
             self.latest = None;
         }
-        self.latest
-            .filter(|s| owner.is_some() && now.saturating_duration_since(s.at) < cue::FRESHNESS)
+        self.latest.filter(|s| {
+            owner.is_some()
+                && now
+                    .checked_duration_since(s.at)
+                    .is_some_and(|age| age < cue::FRESHNESS)
+        })
     }
 }
 static STATE: Mutex<State> = Mutex::new(State {
@@ -88,6 +94,7 @@ unsafe extern "system" fn consume(module: usize) -> usize {
     unsafe { original(module) }
 }
 fn capture(module: usize) {
+    let captured_at = Instant::now();
     let (owner, generation) = match STATE.try_lock() {
         Ok(state) => match state.owner {
             Some(owner) if owner.module == module => (owner, state.generation),
@@ -108,11 +115,12 @@ fn capture(module: usize) {
     };
     if let Ok(mut state) = STATE.try_lock() {
         if state.owner == Some(owner) && state.generation == generation {
+            let id = CAPTURED.fetch_add(1, Ordering::Relaxed) + 1;
             state.latest = Some(Snapshot {
-                at: Instant::now(),
+                id,
+                at: captured_at,
                 frame,
             });
-            CAPTURED.fetch_add(1, Ordering::Relaxed);
         }
     } else {
         DROPPED.fetch_add(1, Ordering::Relaxed);
@@ -170,17 +178,19 @@ unsafe fn install_at(address: usize) -> Result<(), String> {
 
 /// Register only an independently validated locked target. Stale captures cannot
 /// cross target changes, death, missing reads, or loss of lock.
-pub fn apply(target: Option<&mut cue::Target>) -> &'static str {
+pub fn apply(target: Option<&mut cue::Target>, epoch: Instant) -> &'static str {
     if !enabled() {
         return "event_hook_unavailable";
     }
     let Ok(mut state) = STATE.lock() else {
         if let Some(target) = target {
             target.animation_error = Some(reader::ReadError::ChangedDuringRead);
+            target.metadata.source = "event_batch_unavailable";
         }
         return "event_hook_state_failed";
     };
     let owner = target.as_ref().map(|t| Owner {
+        player: t.player_instance,
         module: t.animation_module,
         handle: t.handle,
         model: t.model,
@@ -189,6 +199,24 @@ pub fn apply(target: Option<&mut cue::Target>) -> &'static str {
     let Some(target) = target else {
         return "event_hook_no_target";
     };
+    apply_snapshot(target, snapshot, epoch)
+}
+
+fn apply_snapshot(
+    target: &mut cue::Target,
+    snapshot: Option<Snapshot>,
+    epoch: Instant,
+) -> &'static str {
+    target.metadata.source = "event_batch_missing";
+    if let Some(snapshot) = snapshot {
+        target.metadata.capture_id = snapshot.id;
+        target.metadata.source = "event_batch";
+        target.captured_at = snapshot.at.checked_duration_since(epoch);
+        if target.captured_at.is_none() {
+            target.animation_error = Some(reader::ReadError::ChangedDuringRead);
+            return "event_batch_invalid_time";
+        }
+    }
     match snapshot {
         Some(Snapshot {
             frame: Ok(animation),
@@ -227,6 +255,51 @@ mod tests {
         std::hint::black_box(module).wrapping_add(7)
     }
     #[test]
+    fn failed_capture_retains_its_original_identity_and_timestamp() {
+        let epoch = Instant::now();
+        let mut target = cue::Target {
+            metadata: Default::default(),
+            captured_at: None,
+            player_instance: 1,
+            animation_module: 2,
+            handle: 3,
+            model: 1010,
+            animation: cue::Animation {
+                id: 3000,
+                previous: 0.5,
+                time: 0.516,
+                sequence: 1,
+            },
+            position: [0.0; 3],
+            anchor: [0.0; 3],
+            facing: [0.0; 3],
+            player_position: [0.0; 3],
+            body_radius: 0.0,
+            camera: None,
+            animation_error: None,
+        };
+        let snapshot = Snapshot {
+            id: 42,
+            at: epoch + std::time::Duration::from_millis(10),
+            frame: Err(reader::ReadError::InvalidAnimation),
+        };
+        assert_eq!(
+            apply_snapshot(&mut target, Some(snapshot), epoch),
+            "event_batch_invalid"
+        );
+        assert_eq!(target.metadata.capture_id, 42);
+        assert_eq!(target.metadata.source, "event_batch");
+        assert_eq!(
+            target.captured_at,
+            Some(std::time::Duration::from_millis(10))
+        );
+        assert_eq!(
+            target.animation_error,
+            Some(reader::ReadError::InvalidAnimation)
+        );
+    }
+
+    #[test]
     fn rejects_unknown_build_before_hooking() {
         assert!(install("unknown").is_err());
     }
@@ -234,6 +307,7 @@ mod tests {
     fn captures_expire_and_cannot_cross_target_or_lock_changes() {
         let now = Instant::now();
         let owner = Owner {
+            player: 0x20000,
             module: 0x10000,
             handle: 1,
             model: 1020,
@@ -242,6 +316,7 @@ mod tests {
             owner: Some(owner),
             generation: 0,
             latest: Some(Snapshot {
+                id: 1,
                 at: now,
                 frame: Err(reader::ReadError::InvalidAnimation),
             }),
@@ -253,6 +328,7 @@ mod tests {
             .is_none());
         assert!(state.select(Some(owner), now).is_none());
         state.latest = Some(Snapshot {
+            id: 2,
             at: now,
             frame: Err(reader::ReadError::InvalidAnimation),
         });
@@ -269,6 +345,7 @@ mod tests {
         memory[0xe8..0xec].copy_from_slice(&1_i32.to_le_bytes());
         let module = memory.as_mut_ptr() as usize;
         STATE.lock().unwrap().owner = Some(Owner {
+            player: 0x20000,
             module,
             handle: 1,
             model: 1020,

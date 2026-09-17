@@ -1,139 +1,106 @@
 # Sekiro Deflect Observer
 
-**Local 0.7.0 event-tracking test build:** [implementation and validation](docs/validation-0.7.0.md). Adds a native animation-batch hook; live verification and contact/behavior-resolution hooks remain pending. Older drop-in packages below do not contain it.
+![Synthetic reference-style HUD states, not gameplay](docs/images/0.10.0-reference-gallery.png)
 
-**Local 0.6.4 screen-adaptation fix:** [diagnosis, validation and launch instructions](docs/validation-0.6.4.md). The older 0.6.3 drop-in package described below does not contain this fix.
+**0.10.0-preview recreates the requested slim, top-center HUD:** a tapered rail,
+green parry lead-in, white diamond and red strike emblem. The diamond travels
+toward the center during wind-up; white/red marks the active parryable attack
+phase, not confirmed sword contact or a successful deflect. DODGE, JUMP, MIKIRI,
+NO PARRY and UNKNOWN retain distinct colors and labels.
 
-A training tool with a timing slider above Wolf that anticipates selected incoming attacks in *Sekiro: Shadows Die Twice*. The player presses the buttons.
+The default mode does not require the enemy to be within reach and does not
+predict contact or tell you the exact instant to press. It uses the existing
+animation-batch hook and responses extracted from your game parameters.
+LOCKED stays visible while the target is fresh but attack timing is unavailable.
 
-**Windows overhead cue preview. Green timing is an estimate; exact parry timing is not validated.**
+Mikiri hints assume the skill is unlocked. Set `mikiri = false` in the config
+if it is unavailable; supported thrusts then show PARRY. Unknown responses stay
+explicitly UNKNOWN. See [classification evidence and limits](docs/incoming-attacks.md)
+and [current build checks](docs/validation-0.10.0.md).
 
-**Quick links:** [Install and run](#install-and-run-on-windows) · [Build from source](#build-from-source) · [More images](docs/screenshots.md) · [Troubleshooting](docs/windows.md#troubleshoot)
-
-For the friend beta, use the [drop-in installation and sharing guide](docs/sharing-beta.md).
-It packages the same 0.6.3 observer with an ASI loader: copy two files beside
-`sekiro.exe` and launch through Steam. That route does not require me3 and still
-needs a live game launch trial. Do not overwrite an existing `dinput8.dll`.
-
-Current design, rendered from the shared overlay code with synthetic attack states:
-
-![0.6.3 offline design preview: READY, PARRY, DODGE and JUMP](docs/images/0.6.3-offline-design.png)
-
-| PARRY - current offline detail | DODGE - current offline detail | JUMP - current offline detail |
-| --- | --- | --- |
-| ![Green PARRY close-up](docs/images/0.6.3-parry-detail.png) | ![Orange DODGE close-up](docs/images/0.6.3-dodge-detail.png) | ![Blue JUMP close-up](docs/images/0.6.3-jump-detail.png) |
-
-[Gameplay screenshot and image provenance](docs/screenshots.md). The image above
-shows appearance, not a successful-deflect or live 0.6.3 gameplay test.
-
-Earlier in-game placement, from the **0.6.0 gameplay trial** (the current design
-is shown above):
-
-![Earlier 0.6.0 gameplay showing the neutral LOCKED bar above Wolf](docs/images/0.6.0-gameplay-placement.jpg)
-
-This checkout contains a native Rust DLL, Windows build scripts, and a me3 launch profile. Version 0.6.3-preview refines the supplied reference's design with a larger glowing diamond, longer needle, moving magenta pointer, translucent ribbon wings and outlined English labels. It retains the lower player-relative placement and combo reader improvements. Green **PARRY**, orange **DODGE** for mapped grabs, and blue **JUMP** for mapped sweeps use extracted animation events and attack parameters. Unknown responses stay unverified. The visual update does not change the estimated press intervals or game acceptance windows. See [preview scope, calculation, coverage, and limits](docs/cue-preview.md) and [visual validation](docs/validation-0.6.3.md).
-
-The data contains 2,161 phases across 54 models: 450 green estimates, 39 dodge phases, and 58 jump phases. Chained Ogre and Guardian Ape have selected mappings; this is not every enemy, attack, or form. Stricter response checks remove questionable green prompts from 0.5.0. These counts describe data, not verified gameplay support. See [the validation record](docs/validation-0.6.md).
-
-The 0.6.0 gameplay trial exposed the Ogre's auxiliary animation hiding its attack track. Version 0.6.1 corrects that reader selection using the current engine batch; the corrected cues require another live timing check.
-
-The handover's claim of an earlier Cheat Engine prototype is unconfirmed; the user has never had it. No prototype is required. Public source research provides the candidate layout; live validation remains pending.
-
-The requested first usable version is an overhead **parry-now cue** driven by incoming attack timing. The preview implements placement and an attack-based estimate; predicting actual player contact and verifying successful deflects remain. The optional player-effect panel is a research aid. See [the cue requirements and timing research](docs/parry-cue.md). The tool does not automate inputs or change the deflect window.
+0.9.1 fixes a reproduced DX11 graphics-state leak in the overlay renderer.
+Drawing uses a separate command list with full host-state restoration. The
+reported scene tint still requires an in-game comparison after a full restart.
 
 ## Install and run on Windows
 
-Your friend needs **Windows x64 and Sekiro on Steam**. They do not need to build
-anything or install Rust, Python, Visual Studio, Cheat Engine or me3 for the
-drop-in package.
+1. Close Sekiro completely. Extract the newly built
+   `SekiroDeflectObserver-0.10.0-preview-windows-x64.zip` into its own folder.
+2. Install [me3](https://github.com/garyttierney/me3/releases), keep Steam running,
+   then double-click `observer.me3` or run `launch-observer.cmd`.
+3. Load a save, lock onto a living enemy, and look below the enemy's top posture bar.
+   F9 displays the loaded version and research diagnostics.
+4. Edit `%LOCALAPPDATA%/SekiroDeflectObserver/cue.toml` for placement, appearance
+   or calibration. The file is created on first use and reloaded once per second.
+   See [all defaults, bounds and reset behavior](docs/configuration.md).
 
-1. Get `SekiroDeflectObserver-0.6.3-preview-drop-in-windows-x64.zip` from the person sharing the beta and extract it.
-2. Close Sekiro. In Steam, right-click Sekiro → **Manage → Browse local files**.
-3. Copy `dinput8.dll` and `sekiro_deflect_observer.asi` beside `sekiro.exe`.
-4. Launch normally through Steam, load a save and lock onto an enemy. Press **F9** to check the observer version.
+For an existing configuration, use `anchor = "top"` and `width = 480`.
+The button badge defaults to `parry_button = "LB"`; `L1` and `RMB` are supported.
+The original scalable [strike emblem](assets/ui/strike-emblem.svg) is exported
+from the same vector geometry used by the live HUD; no texture loading is needed.
 
-If `dinput8.dll` already exists, **do not overwrite it**; another mod's loader
-needs a compatibility check first. Use one observer loading method per session.
-The ZIP's `START-HERE.txt` repeats these instructions and explains the colors.
-This drop-in route has passed a standalone loader check; live Sekiro startup
-and installation on another PC remain beta checks.
+Players need no Rust, Python, Visual Studio or Cheat Engine. Use one observer
+loading method per session. The older **0.6.3 drop-in ZIP** described in
+[the sharing guide](docs/sharing-beta.md) remains a historical package and
+contains none of these changes. Do not overwrite another mod's `dinput8.dll`.
+The current build is a local research candidate, not a gameplay-validated release.
 
-| Key | Action |
+| Key | Action (focused game, one fresh press) |
 | --- | --- |
-| F6 / F7 | Lower / raise the bar for this session |
-| F8 | Show / hide the overlay |
-| F9 | Show / hide diagnostics and version |
+| F6 / F7 | Lower / raise by 8 reference pixels; persist the offset |
+| F8 | Toggle gameplay HUD; persist visibility |
+| F9 | Toggle separate research panel; persist its visibility |
+| F10 | Reset horizontal and vertical offsets to zero |
 
-To uninstall, close Sekiro and remove `sekiro_deflect_observer.asi`. Remove the
-supplied `dinput8.dll` only if no other mod uses it. With the drop-in files still
-installed, a normal Steam launch loads the observer.
+All hotkeys pass through; ordinary combat input is never captured. F9 may show
+research without a target but cannot enable an unlocked gameplay cue. Invalid,
+dead, lost, switched or stale target observations clear timing and pulses.
+The freshness ceiling remains 50 ms. Optional legacy timing mode uses bounded
+projection; default incoming mode has no press/contact window.
 
-The separate `SekiroDeflectObserver-0.6.3-preview-windows-x64.zip` uses me3.
-Extract that variant into its own folder, install [me3](https://github.com/garyttierney/me3/releases),
-keep Steam running and double-click `observer.me3` with Sekiro closed.
-See [the complete Windows guide](docs/windows.md) for both methods and troubleshooting.
+To remove a me3 installation, close the game and stop using the observer profile;
+remove its extracted folder if desired. Start normally through Steam. Keep
+shared loader files used by other mods. A full process restart is required to
+load a rebuilt DLL. Removing the config while closed resets all settings.
 
-<a id="build-and-run-on-windows"></a>
+## Build and check
 
-## Build from source
-
-These steps are for development. Install **Rust through rustup** and
-**Visual Studio Build Tools with Desktop development with C++ and the Windows SDK**.
-Open Developer PowerShell for Visual Studio in this source folder, then run:
+Install pinned Rust via rustup and Visual Studio Build Tools with Desktop C++
+and the Windows SDK. From Developer PowerShell in this checkout:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-The script runs formatting, Clippy, Rust tests, an optimized Windows build and
-the DLL startup check, then creates:
+The script checks formatting, Clippy, tests, builds the MSVC release DLL, tests
+non-game host rejection and packages it with `cue.toml`, licenses and checksums.
+It replaces a same-version ZIP; preserve previous candidates before rebuilding.
+The generated tables suffice to compile; no game archives are needed to run.
 
-```text
-target/x86_64-pc-windows-msvc/release/sekiro_deflect_observer.dll
-dist/SekiroDeflectObserver-0.6.3-preview-windows-x64.zip
-dist/SekiroDeflectObserver-0.6.3-preview-windows-x64.zip.sha256
+```powershell
+cargo fmt --all -- --check
+cargo test --locked --offline --target x86_64-pc-windows-msvc
+python scripts/test-attack-timings.py
+python scripts/update-move-coverage.py --check
+git diff --check
 ```
 
-This build produces the **me3 package**. To run your compiled DLL with the
-drop-in loader instead, copy it into a separate test folder as
-`sekiro_deflect_observer.asi`, alongside the `dinput8.dll` from the friend ZIP,
-then follow the drop-in installation steps. Restart Sekiro after every rebuild.
+On this machine `python3` is unavailable and the default GNU target lacks
+`dlltool.exe`; explicit MSVC tests are the working Windows path. See
+[Windows instructions](docs/windows.md) and [release checks](docs/release-testing.md).
 
-The [step-by-step build and packaging guide](docs/windows.md#build-the-package-on-windows)
-covers getting the source, prerequisites, exact commands and the pinned inputs
-needed to reproduce the existing drop-in ZIP. `scripts/package-drop-in.py`
-repackages that specific tested release; it is not a general fresh-build packager.
-Keep older ZIPs before building again: `build.ps1` replaces its same-version me3 ZIP.
-The checked-in generated timings are sufficient to compile; game archives are not needed.
+## Evidence and limits
 
-## Test the project
+Incoming data covers **2,161 phases across 54 models**: 1,673 parry, 40 dodge,
+56 jump, 63 Mikiri, 16 no-parry and 313 unknown. These are parameter-backed
+classifications, not successful gameplay trials or complete boss/form coverage.
 
-Start with [the native first-launch checklist](docs/windows.md#test-the-first-launch). The older [Cheat Engine research guide](docs/testing.md) applies only if that separate prototype becomes available.
+The generator resolves harmless warning effects and explicit Mikiri detection
+hitboxes without treating them as conflicting damaging attacks. Conflicting
+behavior variants and unresolved projectile routes stay UNKNOWN. Exact sources
+and per-phase parameter IDs are in [incoming coverage](docs/incoming-coverage.json).
 
-- [Gameplay checklist](tests/manual/gameplay-checklist.md) covers taps, guard, combat, and game transitions.
-- [Investigate effect 105010](docs/reverse-engineering.md) explains how to compare observations without assuming the effect means a deflect window.
-- [Session report template](tests/compatibility/session-template.md) records the exact build, setup, evidence, and failures.
-- [Automated test requirements](tests/README.md) defines the state and history contracts for implementation.
-- [Compatibility status](docs/compatibility.md) lists the platforms awaiting validation.
-- [Test a native release candidate](docs/release-testing.md) covers installation, removal, packaging, and release evidence.
-
-## Intended design
-
-```text
-Sekiro enemy target, attack timing, and camera
-  -> version-gated read-only observations
-  -> experimental advance response estimate
-  -> timing slider positioned above Wolf
-```
-
-A failed or stale observation must suppress the parry cue. The existing diagnostic panel represents read failure as `Unknown`. The released observer is intended to operate without network requests.
-
-## Development status
-
-Implemented: a DirectX 11 overlay, F8 visibility, executable SHA-256 gate, bounded read-only candidate traversal, stale/error handling, diagnostic transition history, timestamped sample logs, tests, and Windows packaging. See [the architecture](docs/architecture.md).
-
-The preview includes bounded locked-target and animation history reads, camera projection, shared animation imports, attack-parameter response classification, and a timing slider above the player. The anchor remains a lowered standing-height approximation rather than an animated head bone. Pending: new placement verification, attack/contact timing and reach geometry, runtime behavior variation and blend handling, and successful-deflect verification. Complete-window statistics and reaction-time scores are not required. A matching executable hash does not establish gameplay correctness.
-
-Local analysis on 2026-09-12 successfully indexed 142 character animation archives and extracted attack event timelines from the installed game. This supplies data for deriving timings automatically rather than asking the player to chart every enemy. See [the measured findings and remaining runtime work](docs/game-file-analysis.md).
-
-Windows is the initial target. Recording 02 shows the older overlay rendering before visible contact sparks in one soldier exchange; it does not validate the new version or exact input timing. Proton and macOS remain unverified. [Compatibility status](docs/compatibility.md) records platform evidence.
+The DLL does not press buttons, change combat rules, or require telemetry/accounts.
+The supplied 0.9.0 clip shows live LOCKED/PARRY cues; the 0.9.1 rendering fix
+still needs a fresh in-game comparison. Optional `incoming_cues = false` retains
+the older estimated press-window mode and its separate [timing ledger](docs/boss-move-coverage.md).

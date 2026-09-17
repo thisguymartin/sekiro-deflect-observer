@@ -10,6 +10,11 @@ from pathlib import Path
 import re
 
 
+def excludes_response(events):
+    """Reject TAE type-4 BulletBehavior_Midair mixed into a response."""
+    return any(event['type'] == 4 for event in events)
+
+
 class Responses:
     def __init__(self, directory, names_path):
         self.attacks=json.loads((directory/'AtkParam_Npc.json').read_text())
@@ -67,6 +72,7 @@ class Responses:
         resolved=[self.resolve(model,e) for e in relevant]
         kinds={kind for kind,_ in resolved}
         rows=sorted({row for _,ids in resolved for row in ids})
+        if excludes_response(events): return 'unverified',rows
         # A grab alongside ordinary contact still requires avoiding the grab.
         if kinds and kinds<= {'dodge','parry_candidate'} and 'dodge' in kinds: return 'dodge',rows
         if len(kinds)==1: return next(iter(kinds)),rows

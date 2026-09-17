@@ -1,6 +1,6 @@
 # Test a native release candidate
 
-Use this procedure to validate a native release candidate. The Rust DLL includes an experimental incoming-attack timing slider and a separate candidate-effect diagnostic reader. Follow [the Windows instructions](windows.md), [cue scope](cue-preview.md), and [the 0.6 evidence record](validation-0.6.md). Exact contact timing, response accuracy and complete attack coverage remain unvalidated.
+Use this procedure to validate a native release candidate. The Rust DLL includes an experimental defensive timing HUD and a separate candidate-effect diagnostic reader. Follow [the Windows instructions](windows.md), [cue scope](cue-preview.md), and [the 0.6 evidence record](validation-0.6.md). Exact contact timing, response accuracy and complete attack coverage remain unvalidated.
 
 Use [the effect investigation guide](reverse-engineering.md) for signal research. Do not advertise a stable release based on the checks below until the evidence exists.
 
@@ -77,8 +77,32 @@ Leave each item unchecked until a reviewer can follow its evidence link.
 - [ ] Offline behavior, package scan results, and third-party licenses are reviewed.
 - [ ] Screenshots and a short demonstration show the exact release candidate working.
 - [ ] The package includes its version, checksum, README, credits, and limitations.
-- [ ] Release text distinguishes the player-effect research panel from the overhead parry cue. Cue claims name the attacks and conditions actually validated using [the cue requirements](parry-cue.md).
+- [ ] Release text distinguishes the player-effect research panel from the configured posture HUD. Cue claims name the attacks and conditions actually validated using [the cue requirements](parry-cue.md).
 - [ ] Current GitHub and Nexus Mods submission requirements have been checked at publication time, including applicable AI disclosure rules.
 - [ ] Any unresolved limitation is visible in the release notes and compatibility table.
 
 This checklist is a project release gate, not a summary of current platform policies. Publishing a pre-release does not make an untested package a validated mod.
+
+## 0.8.0 acceptance evidence
+
+Use the stable IDs in [WORK-STATUS](WORK-STATUS.md) and the
+[defensive cue trial template](../tests/compatibility/cue-trial-template.md).
+Record the loaded DLL hash, executable/data hashes, target model/animation/phase,
+original capture time, sample age, animation clock and render timestamp. Record
+window mode independently; the DX11 surface dimensions do not identify it.
+Keep estimated press, submission, visible presentation, manual input, contact and
+confirmed deflect distinct. Effect 105010 alone is not an outcome label.
+
+Include `cue.toml` and its documented reset/reload behavior in the package.
+Validate settings after a complete process restart, malformed reload and external
+edit conflict. Rendering must contain no config/file access. Verify F9 can show
+research without lock while the gameplay HUD stays hidden, and ordinary combat
+input still passes through. Use the same shared renderer for synthetic preview
+artifacts; list 720p, 1080p, 1440p, 4K, ultrawide, letterboxing and UI/window modes
+actually tested. Synthetic dimensions do not establish live posture-bar alignment.
+
+`test-asi-loader.ps1` now loads the selected current release DLL in an isolated
+non-game process; `test-dll-load.ps1` verifies host rejection. Both remain separate
+from a real Sekiro first launch, installation, removal, loading, death, focus,
+save reload and timing trial. Preserve older versioned validation records as history.
+No 0.8.0 gameplay acceptance item is complete merely because native tests pass.
