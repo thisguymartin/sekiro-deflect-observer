@@ -84,9 +84,9 @@ pub(super) fn draw(
     submitted.bounds = Some(rect_array(bounds.full));
 
     let practice = submitted.practice;
-    let percent = (practice.active_for(target)
-        && crate::practice::eligible(target, submitted.at, decision))
-    .then_some(practice.percent);
+    // Report the controller's applied speed, even when this attack's hint is
+    // disabled. Rendering never decides which attacks practice may slow.
+    let percent = practice.active_for(target).then_some(practice.percent);
     let armed = practice.status == crate::practice::Status::Ready;
     draw_cue(ui, &bounds, decision, config, fonts, percent, armed);
 }
@@ -133,6 +133,11 @@ fn draw_cue(
     practice_armed: bool,
 ) {
     let (label, mut hue, _) = presentation(decision, config);
+    let label = if practice_percent.is_some() && decision.state == State::Neutral {
+        "PRACTICE"
+    } else {
+        label
+    };
     let label = if let Some(percent) = practice_percent {
         format!("{label} {percent}%")
     } else if practice_armed && decision.state == State::Neutral {

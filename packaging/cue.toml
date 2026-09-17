@@ -3,6 +3,7 @@
 # Every omitted setting uses the value shown here.
 
 # Show the incoming move and defensive response without predicting contact.
+# HUD mode and response hints do not control practice slowdown eligibility.
 incoming_cues = true
 # Set false if Mikiri Counter is not unlocked; eligible thrusts then show PARRY.
 # This preference does not detect the skill or its availability in game memory.
@@ -45,6 +46,7 @@ jump_lead_ms = 300.0        # 25..300 animation milliseconds
 
 # These switches can restrict an existing classification; they cannot make an
 # unclassified move eligible or bypass lock, hash, freshness, or capability checks.
+# Alert display filters only; F11 independently enables speed practice.
 parry = true
 dodge = true
 jump = true

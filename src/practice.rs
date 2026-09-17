@@ -1,8 +1,8 @@
 //! Opt-in, temporary enemy animation speed. No global clock or player writes.
 //! The ownership checks reduce races; they are not an atomic game snapshot.
-use crate::cue::{Response, Target};
+use crate::attack::{self, Kind};
+use crate::cue::Target;
 use crate::reader::{address, pointer, Memory, ReadError, RESEARCH_HASH};
-use crate::timing::{Decision, State};
 use std::time::Duration;
 
 /// The native backend must check accessibility and the complete four-byte write.
@@ -56,7 +56,7 @@ impl Snapshot {
 
 /// Paired grabs and unresolved/no-parry effects stay normal in this first
 /// prototype. An animation speed write cannot retime a projectile in flight.
-pub fn eligible(target: &Target, now: Duration, decision: &Decision) -> bool {
+pub fn eligible(target: &Target, now: Duration) -> bool {
     let captured = target
         .captured_at
         .or_else(|| (target.metadata.source == "poll").then_some(target.metadata.read_start));
@@ -64,21 +64,8 @@ pub fn eligible(target: &Target, now: Duration, decision: &Decision) -> bool {
         && captured
             .and_then(|at| now.checked_sub(at))
             .is_some_and(|age| age < Duration::from_millis(50))
-        && target.animation.time.is_finite()
-        && target.animation.time >= 0.0
-        && decision.animation_time == target.animation.time
-        && matches!(decision.state, State::Incoming | State::AttackActive)
-        && matches!(
-            decision.response,
-            Response::Parry | Response::Jump | Response::Mikiri
-        )
-        && decision.activation.is_some_and(|phase| {
-            phase.start.is_finite()
-                && phase.end.is_finite()
-                && phase.start >= 0.0
-                && phase.end > phase.start
-                && target.animation.time < phase.end
-        })
+        && attack::classify(target)
+            .is_some_and(|phase| matches!(phase.kind, Kind::Parryable | Kind::Sweep | Kind::Thrust))
 }
 
 fn integer(memory: &impl Memory, base: usize, offset: usize) -> Result<i32, ReadError> {

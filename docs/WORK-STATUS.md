@@ -5,11 +5,11 @@ historical evidence. Acceptance IDs are from the defensive-cue request.
 
 **Current checkpoint: the 0.11.0 baseline is committed and pushed as `4c0df9a`
 on `codex/defensive-cue-posture-hud`. New enemy-speed practice work is isolated
-on `feat/enemy-attack-slowdown` (0.12.0-preview).** The user explicitly requested
+on `feat/enemy-attack-slowdown` (0.12.1-preview, feature separation follow-up).** The user explicitly requested
 committing/pushing the current work before implementing optional 80% attack speed.
 The original attack-response scope remains; no contact prediction is promised.
 See [practice behavior and limits](enemy-speed-practice.md) and
-[0.12.0 validation](validation-0.12.0.md). Existing releases, Mods folders and
+[0.12.1 validation](validation-0.12.1.md). Existing releases, Mods folders and
 historical validation records are preserved.
 
 - [Approved design](superpowers/specs/2026-09-16-defensive-cue-design.md)
@@ -585,3 +585,23 @@ research rather than a blocker for this request.
   previous 0.11.0 artifact preserved. See validation-0.12.0.md for exact hashes.
 - Sekiro was closed. Live animation rate, reactions and cleanup still need the
   checklist in enemy-speed-practice.md; synthetic tests are not gameplay proof.
+
+## 2026-09-17: 0.12.1 separates attack facts, alerts and practice
+
+- User requested the proposed separation after an architecture review.
+- Added attack.rs for canonical phase/kind/NPC classification, without display
+  preferences, HUD decisions or speed policy. Incoming alerts consume these
+  facts and apply response toggles/Mikiri fallback only for presentation.
+- Practice eligibility now accepts a target/capture time, not a HUD Decision.
+  The worker no longer gates it with response toggles or incoming/legacy mode.
+  F11, F8 master hiding, focus loss and the existing ownership checks remain.
+- Moved the native writer into a private practice adapter; shared LocalMemory
+  is read-only. The HUD reports applied status independently of filtered hints,
+  including PRACTICE 80% while attack hints are disabled.
+- Added raw phase-order/invalid-animation coverage and all 32 combinations of
+  response/hint/display mode on each of three supported kinds (96 cases).
+  All 131 Rust tests, Clippy, release build, ASI/host-rejection smoke and shared
+  mesh bounds checks pass. Disabled-hint raster inspected. Package verified.
+- 0.12.1 is staged separately and previous builds are preserved. Feature
+  boundaries are documented in feature-boundaries.md. No live game was running;
+  this follow-up does not claim gameplay verification of the speed prototype.

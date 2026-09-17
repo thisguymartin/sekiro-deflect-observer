@@ -1,6 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod alert_log;
+pub mod attack;
 pub mod attack_events;
 mod attack_timings;
 pub mod config;

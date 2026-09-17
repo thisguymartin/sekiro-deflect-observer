@@ -49,7 +49,8 @@ unrelated timing, visibility and calibration settings are preserved.
 
 `reduced_flash = true` disables the white rail/red strike emblem transition,
 retaining the response color, caption and marker. `parry`, `dodge`, and `jump`
-restrict supported responses. `visible`, `diagnostics`, and `diagnostic_logging`
+restrict displayed responses. These toggles, `mikiri` and `incoming_cues` do not
+affect practice eligibility. `visible`, `diagnostics`, and `diagnostic_logging`
 set the startup state for F8, F9, and bounded local logging.
 
 Practice always starts off and has no persisted enable flag. F11 toggles it;

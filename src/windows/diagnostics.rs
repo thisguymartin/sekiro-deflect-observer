@@ -137,7 +137,7 @@ impl RenderSample {
             d.reach.map_or("", |r| r.reason).into(),
             self.npc_param.map_or(String::new(), |v| v.to_string()),
             self.npc_param
-                .and_then(|npc| crate::incoming::npc_variation(self.model, npc))
+                .and_then(|npc| crate::attack::npc_variation(self.model, npc))
                 .map_or(String::new(), |v| v.to_string()),
             number(d.activation.map(|p| p.start)),
             number(d.activation.map(|p| p.end)),
@@ -171,55 +171,28 @@ extern "system" {
         size: usize,
         read: *mut usize,
     ) -> i32;
-    fn WriteProcessMemory(
-        process: *mut c_void,
-        address: *mut c_void,
-        buffer: *const c_void,
-        size: usize,
-        written: *mut usize,
-    ) -> i32;
 }
 
 pub(super) struct LocalMemory {
     started: Instant,
 }
 impl LocalMemory {
+    pub(super) fn check_budget(&self) -> Result<(), ReadError> {
+        if self.started.elapsed() >= READ_BUDGET {
+            Err(ReadError::BudgetExceeded)
+        } else {
+            Ok(())
+        }
+    }
     pub(super) fn new() -> Self {
         Self {
             started: Instant::now(),
         }
     }
 }
-impl crate::practice::SpeedMemory for LocalMemory {
-    fn write_speed(&self, address: usize, value: f32) -> Result<(), ReadError> {
-        if self.started.elapsed() >= READ_BUDGET {
-            return Err(ReadError::BudgetExceeded);
-        }
-        let bytes = value.to_le_bytes();
-        let mut written = 0;
-        // Only the practice controller calls this, after hash/owner/value checks.
-        // The OS checks accessibility; no untrusted pointer is dereferenced here.
-        let ok = unsafe {
-            WriteProcessMemory(
-                GetCurrentProcess(),
-                address as *mut c_void,
-                bytes.as_ptr().cast(),
-                bytes.len(),
-                &mut written,
-            )
-        };
-        if ok == 0 || written != bytes.len() {
-            Err(ReadError::Unreadable)
-        } else {
-            Ok(())
-        }
-    }
-}
 impl Memory for LocalMemory {
     fn read(&self, address: usize, bytes: &mut [u8]) -> Result<(), ReadError> {
-        if self.started.elapsed() >= READ_BUDGET {
-            return Err(ReadError::BudgetExceeded);
-        }
+        self.check_budget()?;
         let mut copied = 0;
         // Windows checks accessibility and copies to our owned buffer. No Rust
         // reference to game memory, writes, protection changes or game calls.
@@ -235,9 +208,7 @@ impl Memory for LocalMemory {
         if ok == 0 || copied != bytes.len() {
             return Err(ReadError::Unreadable);
         }
-        if self.started.elapsed() >= READ_BUDGET {
-            return Err(ReadError::BudgetExceeded);
-        }
+        self.check_budget()?;
         Ok(())
     }
 }
@@ -467,14 +438,13 @@ impl Diagnostics {
                     state.observation_metadata=published_metadata;
                     state.live.trace=trace.clone(); state.live.push(at,cue_result.clone());
                     let now = epoch.elapsed();
-                    let decision = state.engine.incoming(now, state.settings.enabled, state.config.mikiri);
-                    if state.config.incoming_cues && state.live.advancing(now) {
-                        practice_target = target.filter(|t|crate::practice::eligible(t, now, &decision)).cloned();
+                    if state.live.advancing(now) {
+                        practice_target = target.filter(|t|crate::practice::eligible(t, now)).cloned();
                     }
                 } else { break; }
                 // Release the render mutex before OS writes and transition logging.
                 let context = super::game_has_focus() && worker_visible.load(Ordering::Relaxed)
-                    && store.current().visible && store.current().incoming_cues;
+                    && store.current().visible;
                 if !worker_visible.load(Ordering::Relaxed) || !store.current().visible {
                     worker_practice.store(false, Ordering::Relaxed);
                 }

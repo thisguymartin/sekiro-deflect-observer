@@ -12,7 +12,6 @@ mod diagnostics {
 
     #[derive(Default)]
     pub(super) struct RenderSample {
-        pub at: std::time::Duration,
         pub status: &'static str,
         pub position: Option<[f32; 2]>,
         pub decision: timing::Decision,
@@ -78,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ui = context.frame();
     let mut measurements = Vec::new();
     for (row, state) in states.iter().enumerate() {
-        let (mut target, decision) = synthetic(state, camera_aspect)?;
+        let (mut target, mut decision) = synthetic(state, camera_aspect)?;
         if no_camera {
             target.camera = None;
         }
@@ -103,13 +102,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if gallery {
             config.offset_y = row as f32 * 98.0;
         }
-        let mut submitted = diagnostics::RenderSample {
-            at: target.captured_at.unwrap_or_default(),
-            ..Default::default()
-        };
+        if args.iter().any(|arg| arg == "--no-hints") {
+            config.parry = false;
+            config.dodge = false;
+            config.jump = false;
+            config.mikiri = false;
+            let at = target.captured_at.unwrap_or_default();
+            let mut engine = timing::Engine::default();
+            engine.observe(at, Some(&target));
+            decision = engine.incoming(at, [false; 3], false);
+        }
+        let mut submitted = diagnostics::RenderSample::default();
         if args.iter().any(|arg| arg == "--practice") {
             submitted.practice = practice::Snapshot {
-                status: practice::Status::Active,
+                status: if practice::eligible(&target, target.captured_at.unwrap_or_default()) {
+                    practice::Status::Active
+                } else {
+                    practice::Status::Ready
+                },
                 handle: target.handle,
                 model: target.model,
                 animation_module: target.animation_module,

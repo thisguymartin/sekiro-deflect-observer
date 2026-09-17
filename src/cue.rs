@@ -365,7 +365,7 @@ pub fn observe_traced(
     // all-variants response. Never derive a weapon from animation-bank digits.
     let npc_identity = pointer(m, actor, 0x30).ok().and_then(|resource| {
         let npc = integer(m, resource, 0x628).ok()?;
-        crate::incoming::npc_variation(model, npc).map(|_| (resource, npc))
+        crate::attack::npc_variation(model, npc).map(|_| (resource, npc))
     });
     let mut frame = animation_for_model(m, animation_module, model);
     if frame == Err(ReadError::ChangedDuringRead) {

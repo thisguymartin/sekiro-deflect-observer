@@ -1,4 +1,4 @@
-Sekiro Deflect Observer 0.12.0-preview
+Sekiro Deflect Observer 0.12.1-preview
 Native Windows x64 incoming attack response HUD
 
 NEW: F11 toggles optional enemy-speed practice. Starts OFF every process.
@@ -11,6 +11,9 @@ F11 off or F8 hide releases the speed override; hiding disarms practice.
 Focus/lock loss, death and attack ending also attempt ownership-checked cleanup.
 Read/write failures retry; external speed changes pause practice until rearmed.
 This is a gameplay-changing prototype and still needs live verification.
+In 0.12.1, response toggles, Mikiri hints and HUD mode affect alerts only.
+Practice uses raw attack classification independently. With hints disabled,
+PRACTICE 80% still reports the applied speed. F8 remains a master shutdown.
 
 This build fixes a reproduced DX11 graphics-state leak by drawing through a
 private deferred context with full host-state restoration. The reported scene

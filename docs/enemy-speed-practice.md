@@ -1,4 +1,4 @@
-# Enemy speed practice (0.12.0 preview)
+# Enemy speed practice (0.12.1 preview)
 
 F11 toggles practice for the current game process. It **starts off every time**.
 With a fresh lock on an eligible attack, `practice_speed = 0.8` multiplies that
@@ -18,8 +18,10 @@ but leaves the session armed for returning to the game. Restarting starts off.
 The first preview supports recognized PARRY, JUMP and MIKIRI wind-up/active
 phases on the locked enemy. It retains slowdown between recognized combo hits
 and releases it after the last active phase or an ineligible animation change.
-DODGE grabs, NO PARRY, UNKNOWN, absent/stale animation, disabled responses,
-legacy timing mode and unfocused/hidden HUD states do not request slowdown.
+DODGE grabs, NO PARRY, UNKNOWN, absent/stale animation and unfocused/hidden HUD
+states do not request slowdown. As of 0.12.1, response toggles, the Mikiri hint
+and incoming/legacy HUD mode affect alerts only; slowdown uses raw attack facts.
+With attack hints disabled, `PRACTICE 80%` still reports an applied override.
 Normal movement and recovery outside those phases are not intentionally slowed.
 Other enemies run normally. Grab alerts remain available at normal speed.
 
@@ -33,6 +35,10 @@ predictor. The HUD follows captured animation time rather than inventing a
 longer press window.
 
 ## Implementation and evidence
+
+See [feature boundaries](feature-boundaries.md) before changing classification,
+presentation or speed policy. Practice does not consume HUD decisions. Its
+Windows writer is private to the practice module; the shared reader is read-only.
 
 The pinned primary SekiroTool implementation has `GetSpeed`/`SetSpeed` on the
 target character's behavior module:
@@ -77,7 +83,7 @@ or `speed_unavailable`; `external_change_paused` requires explicit rearming.
 
 ## Live check still needed
 
-Use the separately packaged 0.12.0 preview and fully restart Sekiro. First verify
+Use the separately packaged 0.12.1 preview and fully restart Sekiro. First verify
 normal cues with F11 off, then enable on an ordinary sword enemy. Confirm `80%`
 appears only during eligible attacks, Wolf stays normal, and movement/recovery
 returns to normal. Compare the same move with practice off/on, then check:
@@ -91,6 +97,6 @@ returns to normal. Compare the same move with practice off/on, then check:
 
 Retain the pushed 0.11.0 build as the comparison baseline. No new live trial was
 possible while Sekiro was closed; synthetic tests do not establish these results.
-Both builds use the same local config file. If a 0.12.0 hotkey save adds
+Both builds use the same local config file. If a 0.12.x hotkey save adds
 `practice_speed`, remove that setting before running 0.11.0; its older strict
 parser does not recognize the new key and otherwise falls back to defaults.

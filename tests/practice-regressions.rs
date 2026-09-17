@@ -1,9 +1,11 @@
 //! Synthetic ownership/speed memory. These do not validate in-game animation behavior.
 use sekiro_deflect_observer::{
-    cue::{Animation, Response, Target},
+    attack::{self, Kind},
+    config::Config,
+    cue::{Animation, Target},
     practice::{eligible, Controller, SpeedMemory, Status},
     reader::{Memory, ReadError, RESEARCH_HASH},
-    timing::{Decision, Engine, State},
+    timing::{Engine, Settings, State},
 };
 use std::{
     cell::{Cell, RefCell},
@@ -393,36 +395,26 @@ fn invalid_rates_and_baselines_do_not_write() {
 fn unknown_grab_stale_and_ended_attacks_are_ineligible() {
     let mut target = target();
     let now = Duration::from_secs(1);
-    let mut engine = Engine::default();
-    engine.observe(now, Some(&target));
-    let decision = engine.incoming(now, [true; 3], true);
-    assert!(eligible(&target, now, &decision));
-    for response in [Response::Unverified, Response::Dodge, Response::Avoid] {
-        assert!(!eligible(
-            &target,
-            now,
-            &Decision {
-                response,
-                ..decision.clone()
-            }
-        ));
+    target.npc_param = None;
+    assert!(eligible(&target, now));
+    for (model, animation, kind) in [
+        (1020, 3004, Kind::Unknown),
+        (5020, 100003005, Kind::Grab),
+        (5000, 3005, Kind::Unparryable),
+    ] {
+        let mut excluded = target.clone();
+        excluded.model = model;
+        excluded.animation.id = animation;
+        assert_eq!(attack::classify(&excluded).unwrap().kind, kind);
+        assert!(!eligible(&excluded, now));
     }
-    assert!(!eligible(
-        &target,
-        now + Duration::from_millis(50),
-        &decision
-    ));
-    assert!(!eligible(&target, Duration::ZERO, &decision));
-    assert!(!eligible(
-        &target,
-        now,
-        &Decision {
-            state: State::Neutral,
-            ..decision.clone()
-        }
-    ));
+    assert!(!eligible(&target, now + Duration::from_millis(50)));
+    assert!(!eligible(&target, Duration::ZERO));
+    let mut ended = target.clone();
+    ended.animation.time = 100.0;
+    assert!(!eligible(&ended, now));
     target.animation_error = Some(ReadError::InvalidAnimation);
-    assert!(!eligible(&target, now, &decision));
+    assert!(!eligible(&target, now));
 }
 
 #[test]
@@ -442,5 +434,63 @@ fn hud_uses_slower_measured_animation_without_inventing_a_press_window() {
     assert!((before.progress - 0.5).abs() < 0.001);
     assert!((after.progress - 0.6).abs() < 0.001);
     assert!(after.press.is_none() && after.contact.is_none());
-    assert!(eligible(&target, now + Duration::from_millis(100), &after));
+    assert!(eligible(&target, now + Duration::from_millis(100)));
+}
+
+#[test]
+fn alert_preferences_and_display_mode_cannot_change_an_active_speed_lease() {
+    let now = Duration::from_secs(1);
+    for (model, animation, kind) in [
+        (1020, 3003, Kind::Parryable),
+        (1550, 3003, Kind::Thrust),
+        (5100, 100003009, Kind::Sweep),
+    ] {
+        let fixture = Fixture::new(1.0);
+        fixture.put(0xa0000 + 0x68, &(model * 10000i32).to_le_bytes());
+        let mut target = target();
+        target.model = model;
+        target.animation.id = animation;
+        target.npc_param = None;
+        let mut engine = Engine::default();
+        engine.observe(now, Some(&target));
+        let facts = attack::classify(&target).unwrap();
+        assert_eq!(facts.kind, kind);
+        let mut controller = Controller::default();
+        for flags in 0..32 {
+            let config = Config {
+                parry: flags & 1 != 0,
+                dodge: flags & 2 != 0,
+                jump: flags & 4 != 0,
+                mikiri: flags & 8 != 0,
+                incoming_cues: flags & 16 != 0,
+                ..Default::default()
+            };
+            let enabled = [config.parry, config.dodge, config.jump];
+            let decision = if config.incoming_cues {
+                engine.incoming(now, enabled, config.mikiri)
+            } else {
+                engine.decide_with(
+                    now,
+                    &Settings {
+                        enabled,
+                        ..Default::default()
+                    },
+                    &[],
+                )
+            };
+            if !enabled.iter().any(|v| *v) && !config.mikiri {
+                assert_eq!(decision.state, State::Neutral);
+            }
+            assert_eq!(attack::classify(&target), Some(facts));
+            let request = eligible(&target, now).then_some(&target);
+            assert_eq!(
+                tick(&mut controller, &fixture, true, request),
+                Status::Active
+            );
+            assert_eq!(fixture.speed(), 0.8);
+        }
+        assert_eq!(fixture.writes.borrow().as_slice(), &[(SPEED, 0.8)]);
+        assert_eq!(tick(&mut controller, &fixture, false, None), Status::Off);
+        assert_eq!(fixture.speed(), 1.0);
+    }
 }

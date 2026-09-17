@@ -2,11 +2,15 @@
 
 ![Synthetic reference-style HUD states, not gameplay](docs/images/0.10.0-reference-gallery.png)
 
-**0.12.0-preview adds optional F11 enemy-speed practice, initially off.**
+**0.12.1-preview separates enemy-speed practice from alert preferences.**
+Turning off response hints or switching HUD mode no longer changes slowdown
+eligibility. F11 practice remains initially off; F8 hiding still disarms it.
 Eligible locked-enemy attacks run at 80% of their existing animation speed;
 Wolf stays at normal speed. Grabs and unknown/no-parry moves remain unchanged.
 This new mode still needs live verification. See [controls and limits](docs/enemy-speed-practice.md)
-and [build checks](docs/validation-0.12.0.md).
+and [build checks](docs/validation-0.12.1.md).
+The [feature boundaries](docs/feature-boundaries.md) document where future
+animation, alert, HUD and speed changes belong.
 
 The preserved 0.11.0 baseline improves enemy-specific alerts and combo timing. It identifies
 NPC variants for spear Mikiri and grabs, resolves more boss visual effects, and
@@ -33,7 +37,7 @@ reported scene tint still requires an in-game comparison after a full restart.
 ## Install and run on Windows
 
 1. Close Sekiro completely. Extract the newly built
-   `SekiroDeflectObserver-0.12.0-preview-windows-x64.zip` into its own folder.
+   `SekiroDeflectObserver-0.12.1-preview-windows-x64.zip` into its own folder.
 2. Install [me3](https://github.com/garyttierney/me3/releases), keep Steam running,
    then double-click `observer.me3` or run `launch-observer.cmd`.
 3. Load a save, lock onto a living enemy, and look below the enemy's top posture bar.

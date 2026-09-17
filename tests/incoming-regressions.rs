@@ -1,5 +1,6 @@
 //! Real extracted move identities, synthetic clocks. No successful-hit claims.
 use sekiro_deflect_observer::{
+    attack::{self, Kind},
     cue::{Animation, Response, Target},
     reader::ReadError,
     timing::{Engine, State},
@@ -65,7 +66,10 @@ fn reference_marker_reaches_center_at_activation_and_resets_for_the_active_phase
 #[test]
 fn thrust_uses_mikiri_marker_and_falls_back_to_parry_when_skill_hint_disabled() {
     let mut engine = Engine::default();
-    engine.observe(Duration::from_millis(1000), Some(&target(1550, 3003, 0.4)));
+    let target = target(1550, 3003, 0.4);
+    engine.observe(Duration::from_millis(1000), Some(&target));
+    let facts = attack::classify(&target).unwrap();
+    assert_eq!(facts.kind, Kind::Thrust);
     let mikiri = engine.incoming(Duration::from_millis(1000), [true; 3], true);
     assert_eq!(mikiri.response, Response::Mikiri);
     assert_eq!(mikiri.state, State::Incoming);
@@ -81,6 +85,25 @@ fn thrust_uses_mikiri_marker_and_falls_back_to_parry_when_skill_hint_disabled() 
             .state,
         State::Neutral
     );
+    assert_eq!(attack::classify(&target), Some(facts));
+}
+
+#[test]
+fn raw_attack_facts_preserve_combo_order_and_reject_invalid_animation() {
+    let mut t = target(1020, 3005, 0.1);
+    let first = attack::classify(&t).unwrap();
+    assert_eq!((first.index, first.kind), (0, Kind::Parryable));
+    t.animation.time = 0.55;
+    let second = attack::classify(&t).unwrap();
+    assert_eq!((second.index, second.kind), (1, Kind::Thrust));
+    assert_eq!(second.previous_end, first.end);
+    for time in [100.0, -0.1, f32::NAN, f32::INFINITY] {
+        t.animation.time = time;
+        assert!(attack::classify(&t).is_none());
+    }
+    t.animation.time = 0.1;
+    t.animation_error = Some(ReadError::InvalidAnimation);
+    assert!(attack::classify(&t).is_none());
 }
 
 #[test]
