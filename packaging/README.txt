@@ -1,9 +1,17 @@
-Sekiro Deflect Observer 0.12.1-preview
+Sekiro Deflect Observer 0.12.4-preview
 Native Windows x64 incoming attack response HUD
 
+NEW: F11 toggles practice on/off; Shift+F11 selects and saves 70%, 80% or 90% speed.
+A crescent moon and katana stay in the upper-right playable corner, including
+while OFF and without a target. OFF/ON plus 70%, 80% or 90% shows the selected mode.
+Gray = off, gold = armed, jade = applied, amber ! = attention (F9 gives details).
+The 90% crescent is thin; 80% is wider; 70% is fullest. F8 hides and disarms.
+Shift+F11 cycles 80% -> 90% -> 70% -> 80%. 70% means 30% slower animation.
+
 NEW: F11 toggles optional enemy-speed practice. Starts OFF every process.
-Eligible locked-enemy parry/thrust/sweep attacks run at 80% of existing animation
-speed; Wolf stays normal. The caption appends 80% after a checked speed write.
+Eligible locked-enemy parry/thrust/sweep attacks run at the selected 70%, 80% or 90%
+of existing animation speed; Wolf stays normal. The main attack caption appends
+the applied percentage after a checked speed write.
 PRACTICE means armed and waiting. F9 shows current speed-control status.
 Grabs, unknowns and no-parry moves stay normal. Projectile flight is not rescaled.
 Set practice_speed = 0.8 (allowed 0.5..1.0) in your local cue.toml.
@@ -49,6 +57,7 @@ Set incoming_cues = false only to use the older estimated press-window mode.
 
 F6/F7: lower/raise 8 reference pixels and save. F8: toggle cue. F9: research panel.
 F10: reset offsets. F11: session-only practice (initially off).
+Shift+F11: switch 80% / 90% / 70%; remembers the level without enabling practice.
 All hotkeys require focus, ignore repeats and pass through.
 Settings: %LOCALAPPDATA%/SekiroDeflectObserver/cue.toml
 The file is created with safe defaults and reloaded once per second. The included

@@ -39,6 +39,7 @@ extern "system" {
 #[link(name = "user32")]
 extern "system" {
     fn GetWindowThreadProcessId(window: HWND, process_id: *mut u32) -> u32;
+    fn GetKeyState(key: i32) -> i16;
 }
 fn game_has_focus() -> bool {
     let mut process_id = 0;
@@ -130,7 +131,7 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
     }
     log_event(
         &mut log,
-        "Hooks installed. Incoming attack response HUD by default; no reach/contact prediction. Optional legacy timing mode. F6/F7: persist placement; F8: visibility; F9: diagnostics; F10: reset offsets; F11: session-only enemy speed practice (initially off).",
+        "Hooks installed. Incoming attack response HUD by default; no reach/contact prediction. Optional legacy timing mode. F6/F7: persist placement; F8: visibility; F9: diagnostics; F10: reset offsets; F11: session-only enemy speed practice (initially off); Shift+F11: select 80%/90%/70% speed.",
     )?;
     Ok(())
 }
@@ -218,13 +219,22 @@ impl ImguiRenderLoop for Observer {
             self.diagnostics
                 .command(diagnostics::Command::Diagnostics(value));
         }
-        if input::is_practice_toggle(message, key.0, flags.0)
-            && unsafe { GetForegroundWindow() } == hwnd
+        if unsafe { GetForegroundWindow() } == hwnd
             && self.diagnostics.visible.load(Ordering::Relaxed)
         {
-            self.diagnostics
-                .practice_enabled
-                .fetch_xor(true, Ordering::Relaxed);
+            let shift = unsafe { GetKeyState(0x10) } < 0;
+            match input::practice_action(message, key.0, flags.0, shift) {
+                Some(input::PracticeAction::Toggle) => {
+                    self.diagnostics
+                        .practice_enabled
+                        .fetch_xor(true, Ordering::Relaxed);
+                }
+                Some(input::PracticeAction::CycleSpeed) => {
+                    self.diagnostics
+                        .command(diagnostics::Command::PracticeSpeed);
+                }
+                None => {}
+            }
         }
         if let Some(delta) = input::placement_adjustment(message, key.0, flags.0) {
             if unsafe { GetForegroundWindow() } == hwnd {
@@ -355,6 +365,29 @@ impl ImguiRenderLoop for Observer {
                             state.engine.clear();
                             submitted.decision = crate::timing::Decision::default();
                         }
+                    }
+                    // The session crest also draws with no lock or usable attack.
+                    // Only a fresh, matching owner may display an applied rate.
+                    if focused && self.diagnostics.visible.load(Ordering::Relaxed) {
+                        let mut practice = state.practice;
+                        if practice.status == crate::practice::Status::Active
+                            && (!state.live.advancing(now)
+                                || !self.diagnostics.gate.accepts(state.generation)
+                                || !target.as_ref().is_some_and(|t| practice.active_for(t)))
+                        {
+                            practice.status = crate::practice::Status::Ready;
+                        }
+                        cue_draw::draw_practice_indicator(
+                            ui,
+                            &state.config,
+                            &self.cue_fonts,
+                            self.diagnostics.practice_enabled.load(Ordering::Relaxed),
+                            practice,
+                            target
+                                .as_ref()
+                                .and_then(|t| t.camera)
+                                .map_or(16.0 / 9.0, |c| c.aspect),
+                        );
                     }
                     (
                         target,
@@ -535,7 +568,7 @@ impl ImguiRenderLoop for Observer {
                 ui.text(format!("Executable SHA256: {}...", &self.fingerprint[..12]));
                 ui.separator();
                 ui.text("Incoming labels identify move responses; they do not predict contact.");
-                ui.text("F6/F7: placement. F8: cue/off. F9: research. F10: reset. F11: practice.");
+                ui.text("F6/F7: placement. F8: cue/off. F9: research. F10: reset. F11: practice. Shift+F11: 80/90/70%.");
                 ui.text(format!(
                     "Enemy speed practice: {practice_status}; {}% configured; session toggle {}",
                     practice_speed * 100.0,

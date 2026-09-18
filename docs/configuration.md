@@ -54,7 +54,9 @@ affect practice eligibility. `visible`, `diagnostics`, and `diagnostic_logging`
 set the startup state for F8, F9, and bounded local logging.
 
 Practice always starts off and has no persisted enable flag. F11 toggles it;
-F8 hiding disarms it. At 1.0 the controller performs no slowdown. General log
+Shift+F11 switches and saves the 80% / 90% / 70% speed presets without changing on/off
+state. The crescent icon shows OFF/ON plus the selected percentage, including
+without a target. F8 hiding disarms it. At 1.0 the controller performs no slowdown. General log
 disable does not disable the bounded practice-write audit trail. See
 [enemy speed controls and limitations](enemy-speed-practice.md).
 

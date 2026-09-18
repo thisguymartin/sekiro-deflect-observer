@@ -286,6 +286,7 @@ pub(super) enum Command {
     Reset,
     Visibility(bool),
     Diagnostics(bool),
+    PracticeSpeed,
 }
 
 pub(super) struct Diagnostics {
@@ -537,7 +538,7 @@ impl Diagnostics {
                     last_reload=Instant::now();
                 }
                 for command in command_rx.try_iter().take(64) {
-                    let _=match command {Command::Placement(delta)=>store.adjust_placement(delta),Command::Reset=>store.reset_placement(),Command::Visibility(value)=>store.update_visibility(Some(value),None),Command::Diagnostics(value)=>store.update_visibility(None,Some(value))};
+                    let _=match command {Command::Placement(delta)=>store.adjust_placement(delta),Command::Reset=>store.reset_placement(),Command::Visibility(value)=>store.update_visibility(Some(value),None),Command::Diagnostics(value)=>store.update_visibility(None,Some(value)),Command::PracticeSpeed=>store.cycle_practice_speed()};
                 }
                 let config_diagnostic=store.diagnostic().unwrap_or("").to_string();
                 if config_diagnostic!=last_config_diagnostic {

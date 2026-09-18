@@ -70,6 +70,63 @@ pub struct Bounds {
     pub posture_limit: f32,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct PracticeIndicatorBounds {
+    pub viewport: Rect,
+    pub full: Rect,
+    pub center: [f32; 2],
+    pub scale: f32,
+}
+
+/// A small, independent status crest in the playable viewport's upper right.
+/// It does not need a locked target or inherit the attack rail's placement.
+pub fn practice_indicator_bounds(
+    display: [f32; 2],
+    aspect: f32,
+    config: &Config,
+) -> Option<PracticeIndicatorBounds> {
+    if ![
+        display[0],
+        display[1],
+        aspect,
+        config.scale,
+        config.safe_margin,
+    ]
+    .iter()
+    .all(|v| v.is_finite() && *v >= 0.0)
+        || aspect == 0.0
+        || config.scale == 0.0
+    {
+        return None;
+    }
+    let width = display[0].min(display[1] * aspect);
+    let height = width / aspect;
+    if height < 540.0 {
+        return None;
+    }
+    let viewport = Rect::from_xywh(
+        (display[0] - width) * 0.5,
+        (display[1] - height) * 0.5,
+        width,
+        height,
+    );
+    // Keep this tiny and legible even when the attack rail is heavily scaled.
+    let scale = (height / 1080.0 * config.scale).clamp(0.75, 2.0);
+    let margin = config.safe_margin.max(18.0) * scale;
+    let full = Rect::from_xywh(
+        viewport.right - margin - 88.0 * scale,
+        viewport.top + margin,
+        88.0 * scale,
+        84.0 * scale,
+    );
+    viewport.contains(full).then_some(PracticeIndicatorBounds {
+        viewport,
+        full,
+        center: [full.left + 44.0 * scale, full.top + 30.0 * scale],
+        scale,
+    })
+}
+
 /// Layout the fixed posture cue in a display surface.
 pub fn bounds(display: [f32; 2], aspect: f32, config: &Config) -> Option<Bounds> {
     bounds_in(

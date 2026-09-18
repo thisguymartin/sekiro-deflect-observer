@@ -1,6 +1,12 @@
-# Enemy speed practice (0.12.1 preview)
+# Enemy speed practice (0.12.4 preview)
 
 F11 toggles practice for the current game process. It **starts off every time**.
+**Shift+F11** switches through **80%, 90% and 70% enemy speed**, saving the selected
+level without changing on/off. At 90%, a remaining second of animation takes
+approximately 1.11 real seconds; at 80%, approximately 1.25 real seconds; at
+70%, approximately 1.43 real seconds. The cycle is 80% → 90% → 70% → 80%.
+Changing the level during an attack restores the original speed before applying
+the new multiplier, so reductions do not stack.
 With a fresh lock on an eligible attack, `practice_speed = 0.8` multiplies that
 enemy's existing animation speed by 80%. Wolf's speed and the global clock are
 untouched. A full remaining second of animation takes approximately 1.25 real
@@ -9,6 +15,16 @@ Detection and application happen partway into the animation, so the total move
 is not guaranteed to be exactly 25% longer.
 
 The caption appends `80%` after a checked write/readback for that target.
+The upper-right crescent-and-katana crest always shows on/off and the selected
+speed, even without an enemy lock: gray `OFF 80%` means disabled, gold `ON 80%`
+or `ON 90%` / `ON 70%` means armed, and jade means an applied override on a fresh
+matching target. The crescent grows fuller from 90% to 80% to 70%. Amber `!` means
+unavailable, paused, unsupported or pending cleanup. F9 gives the detailed
+status. The displayed percentage is the selected level, even while off or waiting.
+The crest follows the playable
+viewport and HUD scale/opacity, independently of attack hints and rail offsets.
+It hides while unfocused; reduced-flash mode removes its active glow. Turning
+F11 off keeps a gray OFF indicator; F8 hides the entire HUD.
 `PRACTICE` replaces the neutral LOCKED caption while armed and waiting. F9 shows
 the session toggle, configured percentage and controller status. F11 again
 disarms; F8 hiding also disarms. Focus loss releases the current speed override,

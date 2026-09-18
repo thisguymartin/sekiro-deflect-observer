@@ -1,14 +1,22 @@
 # Sekiro Deflect Observer
 
-![Current 0.12.1 HUD and practice states, not gameplay](docs/images/0.12.1-practice-gallery.png)
+![0.12.4 practice moon states, enlarged synthetic preview](docs/images/0.12.4-practice-moon.png)
 
-**0.12.1-preview separates enemy-speed practice from alert preferences.**
+**0.12.4-preview adds 80% / 90% / 70% speed presets and a crescent-moon status icon.**
+**F11** toggles practice; **Shift+F11** switches and saves the selected speed.
+The corner moon shows **OFF/ON** and **70%, 80% or 90%**, even without a target.
+Gray means off, gold means armed, jade means applied, and amber **!** means
+attention is needed (F9 gives details). The moon fills out as speed decreases.
+Shift+F11 cycles **80% → 90% → 70% → 80%**; 70% means 30% slower animation.
+F8 hides the HUD and disarms practice.
+
+Enemy-speed practice remains independent of alert preferences.
 Turning off response hints or switching HUD mode no longer changes slowdown
 eligibility. F11 practice remains initially off; F8 hiding still disarms it.
-Eligible locked-enemy attacks run at 80% of their existing animation speed;
+Eligible locked-enemy attacks run at 70%, 80% or 90% of their existing animation speed;
 Wolf stays at normal speed. Grabs and unknown/no-parry moves remain unchanged.
 This new mode still needs live verification. See [controls and limits](docs/enemy-speed-practice.md)
-and [build checks](docs/validation-0.12.1.md).
+and [build checks](docs/validation-0.12.4.md).
 The [feature boundaries](docs/feature-boundaries.md) document where future
 animation, alert, HUD and speed changes belong.
 
@@ -28,7 +36,7 @@ LOCKED stays visible while the target is fresh but attack timing is unavailable.
 Mikiri hints assume the skill is unlocked. Set `mikiri = false` in the config
 if it is unavailable; supported thrusts then show PARRY. Unknown responses stay
 explicitly UNKNOWN. See [classification evidence and limits](docs/incoming-attacks.md)
-and [current validation](docs/validation-0.12.1.md).
+and [current validation](docs/validation-0.12.4.md).
 
 0.9.1 fixes a reproduced DX11 graphics-state leak in the overlay renderer.
 Drawing uses a separate command list with full host-state restoration. The
@@ -37,7 +45,7 @@ reported scene tint still requires an in-game comparison after a full restart.
 ## Install and run on Windows
 
 1. Close Sekiro completely. Extract the newly built
-   `SekiroDeflectObserver-0.12.1-preview-windows-x64.zip` into its own folder.
+   `SekiroDeflectObserver-0.12.4-preview-windows-x64.zip` into its own folder.
 2. Install [me3](https://github.com/garyttierney/me3/releases), keep Steam running,
    then double-click `observer.me3` or run `launch-observer.cmd`.
 3. Load a save, lock onto a living enemy, and look below the enemy's top posture bar.
@@ -64,6 +72,7 @@ The current build is a local research candidate, not a gameplay-validated releas
 | F9 | Toggle separate research panel; persist its visibility |
 | F10 | Reset horizontal and vertical offsets to zero |
 | F11 | Toggle enemy speed practice for this session; starts off |
+| Shift+F11 | Switch between 80%, 90% and 70% enemy speed; save the selected level |
 
 All hotkeys pass through; ordinary combat input is never captured. F9 may show
 research without a target but cannot enable an unlocked gameplay cue. Invalid,

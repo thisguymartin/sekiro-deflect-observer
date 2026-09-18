@@ -399,6 +399,25 @@ impl Store {
         self.finish(result)
     }
 
+    /// The three keyboard presets; custom config values remain supported until
+    /// this shortcut explicitly selects a preset. Never changes session arming.
+    pub fn cycle_practice_speed(&mut self) -> Result<(), String> {
+        let result = (|| {
+            let mut next = self.current.clone();
+            next.practice_speed = if next.practice_speed == 0.8 {
+                0.9
+            } else if next.practice_speed == 0.9 {
+                0.7
+            } else {
+                0.8
+            };
+            self.persist(&next)?;
+            self.current = next;
+            Ok(())
+        })();
+        self.finish(result)
+    }
+
     pub fn diagnostic(&self) -> Option<&str> {
         self.diagnostic.as_deref()
     }
@@ -1180,6 +1199,31 @@ parry = "#01020380"
         assert!(persisted.diagnostics);
         fs::remove_dir_all(directory).unwrap();
     }
+    #[test]
+    fn practice_speed_presets_persist_and_reject_external_conflicts() {
+        let directory = test_directory();
+        let path = directory.join("cue.toml");
+        fs::write(&path, "offset_y = 40.0\npractice_speed = 0.8\n").unwrap();
+        let mut store = Store::open(path.clone());
+        store.cycle_practice_speed().unwrap();
+        assert_eq!(store.current().practice_speed, 0.9);
+        assert_eq!(Store::open(path.clone()).current().practice_speed, 0.9);
+        store.cycle_practice_speed().unwrap();
+        assert_eq!(store.current().practice_speed, 0.7);
+        assert_eq!(Store::open(path.clone()).current().practice_speed, 0.7);
+        store.cycle_practice_speed().unwrap();
+        assert_eq!(store.current().practice_speed, 0.8);
+        let saved = Store::open(path.clone());
+        assert_eq!(saved.current().practice_speed, 0.8);
+        assert_eq!(saved.current().offset_y, 40.0);
+
+        fs::write(&path, "practice_speed = 0.7\n").unwrap();
+        assert!(store.cycle_practice_speed().is_err());
+        assert_eq!(store.current().practice_speed, 0.8);
+        assert_eq!(fs::read_to_string(&path).unwrap(), "practice_speed = 0.7\n");
+        fs::remove_dir_all(directory).unwrap();
+    }
+
     #[test]
     fn untouched_080_layout_migrates_once_without_changing_other_settings() {
         let directory = test_directory();

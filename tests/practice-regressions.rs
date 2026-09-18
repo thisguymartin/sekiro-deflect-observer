@@ -200,6 +200,47 @@ fn configuration_change_restores_before_rescaling() {
 }
 
 #[test]
+fn switching_80_90_and_70_presets_restores_baseline_without_stacking() {
+    let fixture = Fixture::new(1.25);
+    let mut controller = Controller::default();
+    for factor in [0.8, 0.9, 0.7, 0.8] {
+        let snapshot =
+            controller.update(&fixture, BASE, RESEARCH_HASH, true, Some(&target()), factor);
+        assert_eq!(snapshot.status, Status::Active);
+        assert_eq!(snapshot.percent, (factor * 100.0).round() as u32);
+        assert_eq!(fixture.speed(), 1.25 * factor);
+        controller.update(&fixture, BASE, RESEARCH_HASH, true, Some(&target()), factor);
+        assert_eq!(fixture.speed(), 1.25 * factor);
+    }
+    tick(&mut controller, &fixture, false, None);
+    assert_eq!(
+        fixture.writes.borrow().as_slice(),
+        &[
+            (SPEED, 1.0),
+            (SPEED, 1.25),
+            (SPEED, 1.125),
+            (SPEED, 1.25),
+            (SPEED, 0.875),
+            (SPEED, 1.25),
+            (SPEED, 1.0),
+            (SPEED, 1.25),
+        ]
+    );
+    for factor in [0.7, 0.8, 0.9] {
+        controller.update(
+            &fixture,
+            BASE,
+            RESEARCH_HASH,
+            false,
+            Some(&target()),
+            factor,
+        );
+    }
+    assert_eq!(fixture.writes.borrow().len(), 8);
+    assert_eq!(fixture.speed(), 1.25);
+}
+
+#[test]
 fn lost_owner_or_reused_actor_never_restores_into_replacement() {
     for offset in [8, 0x68] {
         let fixture = Fixture::new(1.0);

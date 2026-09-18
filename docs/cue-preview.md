@@ -1,5 +1,14 @@
 # Current HUD preview
 
+0.12.4 adds a crescent moon and katana in the upper-right playable corner.
+F11 toggles practice on/off; Shift+F11 switches and saves 80% / 90% / 70% speed.
+The badge always shows the selected level: gray `OFF 80%`, gold `ON 80%` or
+`ON 90%` / `ON 70%`, jade while applied, and amber `!` for attention (F9 explains it).
+The moon is thin at 90%, wider at 80%, and fullest at 70%. It remains visible without a lock or while off;
+F8 hides it. It respects HUD scale/opacity and reduced-flash mode.
+
+![Practice moon states, enlarged synthetic render](images/0.12.4-practice-moon.png)
+
 The 0.12.1 preview uses a compact 480 x 18 reference-pixel rail at `(0.5, 0.16)`
 of the playable viewport. This places the rail below the enemy's top posture bar.
 The gallery uses the same drawing code as the live overlay with synthetic attack
@@ -54,5 +63,5 @@ python scripts/render-cue-layout.py dist/review-0.12.1/layout/no-hints
 
 The previews verify renderer output and layout bounds. They do not verify live
 placement, enemy slowdown, input timing, contact, or a successful defensive
-action. See [current validation](validation-0.12.1.md) and the
+action. See [current validation](validation-0.12.4.md) and the
 [gameplay checklist](../tests/manual/gameplay-checklist.md).

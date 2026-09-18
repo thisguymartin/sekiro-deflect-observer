@@ -38,6 +38,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gallery = incoming_gallery || args.iter().any(|arg| arg == "--gallery");
     let no_camera = args.iter().any(|arg| arg == "--no-camera");
     let state = option(&args, "--state").unwrap_or("parry");
+    let indicator_only = args.iter().any(|arg| arg == "--indicator-only");
+    let practice_speed = option(&args, "--speed")
+        .map(str::parse)
+        .transpose()?
+        .unwrap_or(0.8_f32);
+    if !practice_speed.is_finite() || !(0.5..=1.0).contains(&practice_speed) {
+        return Err("--speed must be between 0.5 and 1.0".into());
+    }
+    let indicator = option(&args, "--indicator").or_else(|| {
+        args.iter()
+            .any(|arg| arg == "--practice")
+            .then_some("active")
+    });
     let display = parse_display(&args)?.unwrap_or([1920.0, 1080.0]);
     let scale = option(&args, "--scale")
         .map(str::parse)
@@ -91,6 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         let mut config = config::Config {
             scale,
+            practice_speed,
             ..config::Config::default()
         };
         if args.iter().any(|arg| arg == "--posture") {
@@ -123,18 +137,89 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 handle: target.handle,
                 model: target.model,
                 animation_module: target.animation_module,
-                percent: 80,
+                percent: (practice_speed * 100.0).round() as u32,
                 ..Default::default()
             };
         }
-        cue_draw::draw(ui, &target, &decision, &config, &fonts, &mut submitted);
-        measurements.push((state.to_string(), submitted));
+        if !indicator_only {
+            cue_draw::draw(ui, &target, &decision, &config, &fonts, &mut submitted);
+            measurements.push((state.to_string(), submitted));
+        }
+    }
+    if let Some(mode) = indicator {
+        let (enabled, status) = match mode {
+            "armed" => (true, practice::Status::Ready),
+            "active" => (true, practice::Status::Active),
+            "paused" => (true, practice::Status::Conflict),
+            "unavailable" => (true, practice::Status::Unavailable),
+            "unsupported" => (true, practice::Status::Unsupported),
+            "pending" => (false, practice::Status::RestorePending),
+            "off" => (false, practice::Status::Off),
+            _ => return Err(format!("unknown indicator mode: {mode}").into()),
+        };
+        let config = config::Config {
+            scale,
+            practice_speed,
+            visible: !args.iter().any(|arg| arg == "--hidden"),
+            reduced_flash: args.iter().any(|arg| arg == "--reduced-flash"),
+            ..Default::default()
+        };
+        // No Target is passed: this exercises the persistent, unlocked status.
+        let bounds = cue_draw::draw_practice_indicator(
+            ui,
+            &config,
+            &fonts,
+            enabled,
+            practice::Snapshot {
+                status,
+                percent: (practice_speed * 100.0).round() as u32,
+                ..Default::default()
+            },
+            camera_aspect,
+        );
+        let expected_visible = config.visible;
+        if bounds.is_some() != expected_visible {
+            return Err(format!("unexpected indicator visibility for {mode}").into());
+        }
+        if let Some(bounds) = bounds {
+            measurements.push((
+                format!("indicator-{mode}"),
+                diagnostics::RenderSample {
+                    status: status.label(),
+                    position: Some(bounds.center),
+                    layout_mode: "practice_top_right",
+                    viewport: [
+                        bounds.viewport.left,
+                        bounds.viewport.top,
+                        bounds.viewport.right,
+                        bounds.viewport.bottom,
+                    ],
+                    bounds: Some([
+                        bounds.full.left,
+                        bounds.full.top,
+                        bounds.full.right,
+                        bounds.full.bottom,
+                    ]),
+                    ..Default::default()
+                },
+            ));
+        }
     }
     let data = context.render();
-    if data.total_vtx_count == 0 {
+    if data.total_vtx_count == 0 && !measurements.is_empty() {
         return Err("synthetic renderer produced no cue geometry".into());
     }
-    for vertex in data.draw_lists().flat_map(|list| list.vtx_buffer().iter()) {
+    if measurements.is_empty() && data.total_vtx_count != 0 {
+        return Err("hidden indicator still produced geometry".into());
+    }
+    // imgui 0.12 constructs a slice from a null pointer for an empty draw list.
+    // An intentionally hidden indicator has no lists to inspect or export.
+    let draw_lists: Vec<_> = if data.total_vtx_count == 0 {
+        Vec::new()
+    } else {
+        data.draw_lists().collect()
+    };
+    for vertex in draw_lists.iter().flat_map(|list| list.vtx_buffer().iter()) {
         let contained = measurements.iter().any(|(_, sample)| {
             sample.bounds.is_some_and(|bounds| {
                 vertex.pos[0] >= bounds[0] - 0.25
@@ -153,7 +238,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut file = File::create(output.join("mesh.json"))?;
-    let label = if gallery { "gallery" } else { state };
+    let label = if indicator_only {
+        indicator.unwrap_or("off")
+    } else if gallery {
+        "gallery"
+    } else {
+        state
+    };
     let version = env!("CARGO_PKG_VERSION");
     write!(
         file,
@@ -183,7 +274,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     write!(file, "],\"lists\":[")?;
-    for (n, list) in data.draw_lists().enumerate() {
+    for (n, list) in draw_lists.iter().enumerate() {
         if n > 0 {
             write!(file, ",")?;
         }

@@ -37,7 +37,7 @@ Keep the DLL and profile together. Remove the drop-in observer from the game
 folder before switching to this method. A running game retains its loaded DLL
 until it exits completely.
 
-### Current 0.12.1 controls and states
+### Current 0.12.4 controls and states
 
 | Control or cue | Meaning |
 | --- | --- |
@@ -46,6 +46,8 @@ until it exits completely.
 | F9 | Show / hide separate diagnostics and version; persist visibility |
 | F10 | Reset horizontal and vertical offsets |
 | F11 | Toggle enemy-speed practice for this session; initially off |
+| Shift+F11 | Switch and save 80% / 90% / 70% enemy speed without changing on/off |
+| Crescent OFF / ON + percentage | Gray off; gold armed; jade applied; amber ! needs attention |
 | PRACTICE / PRACTICE 80% | Armed and waiting / applied slowdown with attack hints disabled |
 | PARRY / DODGE / JUMP / MIKIRI | Incoming response; marker approaches center during wind-up |
 | NO PARRY / UNKNOWN | Deflection disabled / response unresolved |

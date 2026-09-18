@@ -16,6 +16,26 @@ pub fn is_practice_toggle(message: u32, key: usize, flags: isize) -> bool {
     message == WM_KEYDOWN && key == 0x7a && flags & PREVIOUS_KEY_STATE == 0
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PracticeAction {
+    Toggle,
+    CycleSpeed,
+}
+
+/// Shift+F11 selects speed without changing the session's on/off state.
+pub fn practice_action(
+    message: u32,
+    key: usize,
+    flags: isize,
+    shift: bool,
+) -> Option<PracticeAction> {
+    is_practice_toggle(message, key, flags).then_some(if shift {
+        PracticeAction::CycleSpeed
+    } else {
+        PracticeAction::Toggle
+    })
+}
+
 pub fn placement_adjustment(message: u32, key: usize, flags: isize) -> Option<i32> {
     if message != WM_KEYDOWN || flags & PREVIOUS_KEY_STATE != 0 {
         return None;
@@ -80,5 +100,25 @@ mod tests {
     fn subsequent_fresh_presses_are_accepted() {
         assert!(is_visibility_toggle(WM_KEYDOWN, VK_F8, 1));
         assert!(is_visibility_toggle(WM_KEYDOWN, VK_F8, 1));
+    }
+
+    #[test]
+    fn practice_speed_shortcut_is_distinct_and_ignores_repeat_and_key_up() {
+        assert_eq!(
+            practice_action(WM_KEYDOWN, 0x7a, 0, false),
+            Some(PracticeAction::Toggle)
+        );
+        assert_eq!(
+            practice_action(WM_KEYDOWN, 0x7a, 0, true),
+            Some(PracticeAction::CycleSpeed)
+        );
+        for shift in [false, true] {
+            assert_eq!(
+                practice_action(WM_KEYDOWN, 0x7a, PREVIOUS_KEY_STATE, shift),
+                None
+            );
+            assert_eq!(practice_action(0x0101, 0x7a, 0, shift), None);
+            assert_eq!(practice_action(WM_KEYDOWN, 0x7b, 0, shift), None);
+        }
     }
 }

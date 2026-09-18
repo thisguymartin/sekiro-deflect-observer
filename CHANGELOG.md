@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.12.4-preview - 2026-09-18 (70% practice preset)
+
+- Add 70% enemy speed to the saved Shift+F11 cycle: 80% → 90% → 70% → 80%.
+  F11 remains on/off, and startup remains OFF with the last selected speed.
+- Show OFF/ON 70% with a fuller crescent for the stronger slowdown.
+- Extend persistence and speed-switch regressions through all three presets,
+  including restoration of a non-1.0 baseline without stacking.
+
+## 0.12.3-preview - 2026-09-18 (practice moon and two speed presets)
+
+- Keep F11 as on/off and add Shift+F11 to switch and persist 80% / 90% speed
+  without changing whether practice is armed. Speed changes restore the original
+  baseline before applying the new multiplier.
+- Replace the corner wind crest with a crescent moon and katana. Show OFF/ON
+  plus the selected percentage even without a target or while disabled. The 90%
+  moon is thinner; gray means off, gold armed, jade applied, amber ! attention.
+- Keep F8 master visibility and focus behavior. Add shortcut, preset persistence
+  and active-speed-switch regressions; extend mesh previews to both levels.
+
+## 0.12.2-preview - 2026-09-18 (practice status crest)
+
+- Add a small katana and wind crest in the playable viewport's upper-right
+  corner whenever F11 practice is armed, including without an enemy lock.
+- Gold `ON` means armed; jade with the applied percentage means a fresh matching
+  enemy has a checked speed override. Amber `!` reports unavailable, paused,
+  unsupported or pending-cleanup status; F9 shows the detailed reason.
+- Keep the crest independent of attack hints and rail placement. F8 hides it,
+  F11 disarms it, and focus loss hides it temporarily. Reduced-flash mode removes
+  the active glow. Slowdown policy and memory writes are unchanged.
+
 ## 0.12.1-preview - 2026-09-17 (independent alerts and practice)
 
 - Separate canonical attack kind/phase classification into `attack.rs`. Alert
