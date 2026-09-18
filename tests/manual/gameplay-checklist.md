@@ -1,9 +1,9 @@
 # Gameplay test checklist
 
-For the current native cue use [Windows instructions](../../docs/windows.md) and
+For the current native cue use [installation instructions](../../docs/users/install.md) and
 [the defensive cue trial record](../compatibility/cue-trial-template.md).
 The older effect research cases below remain separate from gameplay-cue timing.
-Use the [prototype testing guide](../../docs/testing.md) only for that historical
+Use the [prototype testing guide](../../docs/archive/0.6-beta/prototype-testing.md) only for that historical
 research path; its candidate state is not a successful-deflect result.
 
 Each expected result is a requirement or a research question, not a claim about the existing prototype. Mark unavailable native-only controls `Not applicable` during prototype research. They remain required for the native release.
@@ -49,7 +49,9 @@ Each expected result is a requirement or a research question, not a claim about 
 
 ## Developer-only failure cases
 
-Use synthetic readers and fixture executable identities for [failure tests](../README.md). Do not corrupt live pointers or patch the executable to manufacture a fault.
+Use synthetic readers and fixture executable identities for
+[failure tests](../../docs/development/testing.md). Do not corrupt live pointers
+or patch the executable to manufacture a fault.
 
 | ID | Injected condition | Required result |
 |---|---|---|

@@ -1,4 +1,5 @@
-//! Read-only, bounded candidate-effect observations. See docs/reader-research.md.
+//! Read-only, bounded candidate-effect observations.
+//! See docs/research/reader/effect-reader.md.
 use std::collections::BTreeSet;
 
 pub const CANDIDATE_EFFECT: i32 = 105010;

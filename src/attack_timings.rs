@@ -1,5 +1,5 @@
 //! Generated activation estimates. Contact and deflectability remain unverified.
-//! See docs/enemy-coverage.json and docs/cue-preview.md.
+//! See docs/research/data/enemy-coverage.json and docs/gameplay/legacy-timing.md.
 #[allow(clippy::excessive_precision)]
 pub const ATTACKS: &[(i32, i32, f32, f32, bool)] = &[
     (1010, 3000, 0.666666687_f32, 0.800000012_f32, true),

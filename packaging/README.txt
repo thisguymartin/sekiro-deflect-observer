@@ -75,7 +75,7 @@ The September 18 recording shows the live PARRY rail, active-phase emblem and
 70% practice states. It does not show F9/build identity or measure slowdown,
 input timing, successful deflects or cleanup across every game transition.
 This remains an experimental preview. See the timestamped gameplay walkthrough:
-https://github.com/thisguymartin/sekiro-deflect-observer/blob/main/docs/screenshots.md
+https://github.com/thisguymartin/sekiro-deflect-observer/blob/main/docs/gameplay/walkthrough.md
 
 Fallback data classifies 2,112 phases across 53 models; 293 remain unknown.
 NPC behavior variants add weapon-aware choices. These are classifications,
@@ -102,5 +102,6 @@ F8 hides the HUD and disarms practice; it does not unload the hook.
 
 Source, configuration and current validation:
 https://github.com/thisguymartin/sekiro-deflect-observer
-See docs/validation-0.12.4.md, docs/configuration.md, docs/incoming-attacks.md,
+See docs/archive/validation/validation-0.12.4.md,
+docs/users/configuration.md, docs/research/attack-classification.md,
 LICENSE and THIRD-PARTY-NOTICES.txt.

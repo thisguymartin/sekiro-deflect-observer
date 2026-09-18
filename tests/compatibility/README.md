@@ -1,7 +1,7 @@
 # Compatibility records
 
 There are no completed structured compatibility runs in this checkout. The
-[September 18 gameplay walkthrough](../../docs/screenshots.md) provides live
+[September 18 gameplay walkthrough](../../docs/gameplay/walkthrough.md) provides live
 visual evidence, but does not identify the full OS/driver/loader/artifact setup.
 The [session template](session-template.md) is a blank form, not evidence of compatibility.
 
@@ -12,7 +12,7 @@ The [session template](session-template.md) is a blank form, not evidence of com
 3. Complete each case you attempt using the [gameplay checklist](../manual/gameplay-checklist.md).
 4. Link each result to a trial, clip time range, frame indices, or relevant log excerpt.
 5. List the report below only after it contains actual observations.
-6. Update [public compatibility status](../../docs/compatibility.md) only when the report supports the claim.
+6. Update [public compatibility status](../../docs/users/compatibility.md) only when the report supports the claim.
 
 ## Result meanings
 

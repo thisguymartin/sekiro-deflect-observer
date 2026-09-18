@@ -66,7 +66,7 @@
 - Add applied-speed captions, F9 status, bounded practice-write audit logging,
   and regression tests. No game files or saves are edited; this optional mode
   does temporarily write enemy animation speed. Live reaction/cleanup checks
-  remain pending. See `docs/enemy-speed-practice.md`.
+  remain pending. See `docs/research/practice-evidence.md`.
 
 ## 0.11.0-preview - 2026-09-17 (enemy variants and incoming timing)
 
@@ -200,7 +200,7 @@
 - Generate 2,161 phases across 54 models, with 450 green estimates across 39 models, 39 dodge phases and 58 jump phases. Stricter filters intentionally reduce green coverage; unknown attacks stay unverified.
 - Preserve a neutral lock when only animation reads fail; retry changed observations within the existing read budget and use the handle's actual bucket-index bound.
 - Add read-stage and render-submission CSV diagnostics, shorten the render mutex scope, and expose log status in F9.
-- Add response, import, bitfield, read-failure and combo regression checks plus a shared-renderer visual check. New live timing, placement and universal enemy support remain unverified; see docs/validation-0.6.md.
+- Add response, import, bitfield, read-failure and combo regression checks plus a shared-renderer visual check. New live timing, placement and universal enemy support remain unverified; see docs/archive/validation/validation-0.6.md.
 
 ## 0.5.0-preview
 
