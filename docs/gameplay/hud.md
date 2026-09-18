@@ -33,17 +33,40 @@ PARRY for supported deflectable thrusts instead.
 
 ## Read the practice moon
 
+![Enlarged moon illustration comparing ON 90%, ON 80%, ON 70%, and OFF 70%](../images/0.12.4-practice-moon.png)
+
+This renderer-generated illustration shows the indicator in the upper-right
+corner. The moon grows fuller from 90% to 80% to 70% enemy speed. These presets
+mean 10%, 20%, and 30% slower animation, respectively. The gray example shows
+practice turned off with 70% still selected. This is a visual reference, not a
+gameplay capture.
+
+Press **F11** to turn practice on or off. Press **Shift+F11** to select
+**80% -> 90% -> 70% -> 80%** without changing the on/off state. The selected
+speed survives a restart, but practice always starts off.
+
 | Appearance | Meaning |
 | --- | --- |
 | Gray OFF | Practice is disabled. The percentage is the selected speed. |
 | Gold ON | Practice is armed and waiting. |
 | Jade ON | The controller reports an applied override on the current target. |
-| Amber ON with `!` | Practice is unavailable, paused, unsupported, or waiting for cleanup. Open F9. |
+| Amber with `!` | Practice is unavailable, paused, unsupported, or waiting for cleanup. Open F9. Cleanup can remain pending after switching OFF. |
 
-The moon remains visible without a lock. F8 hides both indicators and disables
-practice. Focus loss hides the HUD until the game regains focus.
+The moon remains visible without a lock and while practice is off. `ON 70%`
+alone means practice is armed with 70% selected. A jade moon and an applied
+percentage in the rail, such as `PARRY 70%`, report slowdown on the current target.
 
-Read [the practice guide](practice.md) for eligibility and cleanup behavior.
+F11 off keeps the gray moon and attack hints visible. F8 hides both indicators
+and disables practice. Showing the HUD again does not re-enable practice.
+Focus loss hides the HUD and releases the override until the game regains focus,
+but keeps practice armed. Practice hotkeys work with the game focused and HUD visible.
+
+The moon follows the playable viewport and HUD scale and opacity. Moving the
+attack rail with F6 or F7 does not move the moon. Reduced-flash mode removes
+the moon's active glow.
+
+Read [the illustrated practice guide](practice.md) for gameplay screenshots of
+gold, jade, and amber states, plus eligibility and cleanup behavior.
 
 ## Change the presentation
 

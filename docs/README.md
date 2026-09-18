@@ -13,9 +13,9 @@ Choose the section that matches what you are doing.
 
 ## Learn the gameplay cues
 
+- [Start with the illustrated gameplay walkthrough](gameplay/walkthrough.md)
+- [Turn slowdown on or off and read the practice moon](gameplay/practice.md)
 - [Read the HUD](gameplay/hud.md)
-- [Use enemy-speed practice](gameplay/practice.md)
-- [Follow a recorded attack](gameplay/walkthrough.md)
 - [Use the optional legacy timing mode](gameplay/legacy-timing.md)
 
 The default HUD identifies attack phases. It does not confirm contact or a
