@@ -1,85 +1,115 @@
-# Requested overhead parry cue
+# Defensive cue timing (0.8.1-preview)
 
-The user clarified the goal on 2026-09-12: an indicator above the enemy's head
-that lights up when they should press deflect. This is the first usable product
-requirement, replacing the earlier plan to ship a player-state display first.
+This page describes the legacy estimated timing mode. Since 0.9.0 the default
+is [incoming attack responses](incoming-attacks.md), without contact prediction
+or a press window. Select `incoming_cues = false` to use the model below.
 
-The normal display should be one small cue that tracks the enemy's head and
-lights green during a validated opportunity to press deflect. It must be driven
-by the incoming attack, independently of whether the player has already pressed
-guard. Diagnostic text belongs to the research display. Reaction-time scores,
-window statistics, input automation, and changes to combat rules are not part of
-the requested feature.
+The historical 0.8.1 request placed a cue above Wolf's bottom posture bar;
+0.10.0 now defaults to the user's requested top-center reference design.
+READY is preparation; PARRY NOW, DODGE and JUMP describe defensive responses.
+Mikiri is not implemented: neither an exact eligible-thrust classifier nor a
+validated player-capability observation is available. Enemy recovery does not
+produce retaliation or attack-back guidance. No combat rules or inputs change.
 
-## Timing research
+## Evidence and reproduction
 
-Sources inspected on 2026-09-12:
+The regression suite records three synthetic cases that isolate defects before
+their fixes:
 
-- [Animation analysis of Sekiro's standard deflect](https://www.nexusmods.com/stellarblade/articles/199)
-  describes animation `a050_203000` applying effect `105010` immediately at guard
-  input, with an ordinary duration of 0.2 seconds (12 frames at 60 fps). The
-  article includes an animation-editor image and credits Igor's experiments.
-  This is a published baseline, not a measurement of this executable or every
-  guard/input condition.
-- [Sekiro Resurrection's animation documentation](https://github.com/SekiroResurrection/modding-wiki/wiki/Animations)
-  describes per-animation TAE event timelines and `InvokeAttackBehavior[1]`
-  hitbox events. These provide a lead for mapping enemy attack phases.
-- [SekiroTool](https://github.com/borgCode/SekiroTool) exposes locked-target
-  options and hitbox/event views. Its source is a lead for target observation,
-  not an implemented timing cue or proof of offsets on this local build.
+- T1-A: c1010 / animation 3000 captured at animation 0.650 s, then drawn 20 ms
+  later at 1x. Activation is 0.666666687 s. The old sampled clock could still show
+  action; bounded projection sees 0.670 and expires it.
+- T1-B: a hook capture at monotonic 0 ms reapplied by a poll at 49 ms must be
+  stale at 98 ms. Re-stamping it as a new sample incorrectly extended its life.
+- T1-C: a changed raw ring sequence with an unchanged animation clock must not
+  count as progression. The sequence is not a validated new-attack signal.
 
-Engineering inference: the deflect window describes how long a guard press can
-accept a subsequent contact. It does not identify when an enemy will make
-contact. Enemy attack events are a starting point; hitbox activation alone must
-not be treated as the exact moment a blade reaches the player. Distance,
-movement, animation playback, and display delay must be checked in gameplay.
-Do not implement a fixed timer from any sword movement or from player effect
-`105010` and label it a reliable parry prompt.
+Red/green outputs are under `dist/review-0.8.0`; regression sources are
+[`tests/timing-regressions.rs`](../tests/timing-regressions.rs) and
+[`src/cue.rs`](../src/cue.rs). These reproduce calculation defects, not a measured
+miss or a successful gameplay deflect. The Ogre auxiliary-track regression,
+current-batch selection, owner checks and ambiguous-track rejection remain.
 
-## Current implementation and recording evidence
+## Clock and occurrence model
 
-The earlier 0.3.0-dev DLL reads only the local player's candidate effects. It has no
-enemy target reader, enemy animation clock, attack timing map, head-position
-reader, or camera projection. Moving its existing green label above an enemy
-would not provide the requested prompt.
+`src/timing.rs` is portable Rust with an injected monotonic `Duration`. An
+occurrence belongs to the observed player instance, target animation module,
+handle, model and animation ID. Owner/animation switches, clock rewinds, invalid
+reads or gaps break continuity. The same animation ID after an observed rewind
+is a new occurrence. A restart hidden entirely between reads cannot be identified
+reliably; this limitation is not solved by the reader's sequence number.
 
-The supplied `Recording 2026-09-12 164102.mp4` is approximately 39.36 seconds at
-30 recorded frames per second. Frame inspection shows the research panel during
-combat and brief green candidate labels, including near 3.0, 9.8, and 31.8
-seconds. These are visible player-effect observations, not independently
-validated press opportunities. The recording contains no independent guard
-input timestamps from which to establish exact press timing.
+The engine needs three progressing captures: two rate estimates within 20%,
+with capture spacing 1..50 ms and playback rate 0.25..4 animation seconds per
+real second. New stops or inconsistent rates suppress action until stable again.
+Hook capture time is preserved; a re-delivered hook capture is not a new stop.
+A new polling read of an unchanged clock suppresses action immediately and does
+not refresh its source age. Polling fallback can consequently flicker or omit
+cues between game updates; the completed-batch hook supplies distinct capture
+identity without that ambiguity. Projection is at most 25 ms and only within the same
+validated occurrence. At 50 ms, required observations expire. A wall timer
+alone never advances an attack through a pause, stale read or animation switch.
 
-## Work required for a usable cue
+## Separate intervals and units
 
-1. Establish read-only, build-gated observations of the enemy target, current
-   attack animation and playback time, player/target positions, and camera.
-   Record source provenance and verify the layout on the local executable.
-2. Derive attack phases from the installed game's TAE timelines and match them
-   to the live enemy's current animation and playback time. Account for attack
-   reach and player position before treating a hitbox event as imminent contact.
-   Use representative gameplay checks to validate the calculation; the user
-   should not manually catalogue each enemy's timings. Start with the soldier
-   in the supplied recording, then check different attack types and speeds.
-3. Project a validated head or target anchor through the camera to screen
-   coordinates. Track camera movement and resolution changes. Hide cues for
-   missing targets, invalid projection, loading, or stale observations.
-4. Verify that the light precedes contact and guides a successful manual press,
-   that each supported combo hit has its own opportunity, and that cancelled,
-   out-of-range, or non-deflectable attacks do not produce a green prompt.
+All intervals in a decision use animation seconds. Endpoints are half-open:
+`start <= animation_time < end`. Let `a` be activation, `r` the stable playback
+rate and `L` display latency plus input latency in **real seconds**.
 
-The [0.4.0 preview](cue-preview.md) now implements an overhead indicator and
-an activation-based timing estimate. Exact contact prediction and gameplay
-verification remain; the preview does not yet satisfy the validated press
-opportunity requirement.
+For uncalibrated phases, contact is explicitly the **activation proxy** `[a,a]`.
+Default estimated press intervals are `[a - lead - r*L, a - r*L)`, where lead is
+0.150 animation seconds for parry and 0.300 for dodge/jump. Configuration can
+reduce these estimate leads. Subtracting the same latency shift from both
+endpoints moves guidance earlier without widening it. These are not measured
+contact or game acceptance windows.
 
-## Local game-file analysis
+A compatible measured profile stores contact offsets in animation milliseconds
+relative to activation, giving `[contact_min,contact_max]`. Its press interval is
+`[contact_max - r*early - r*L, contact_min - r*late - r*L)`, with early/late in real
+seconds before contact. An empty intersection gives no guidance. A preferred
+instant uses the contact midpoint minus the measured preferred lead and latency;
+it is used only if it lies inside that valid interval. No profile ships enabled.
 
-On 2026-09-12 the user supplied the installed game directory. A new read-only
-archive inspector successfully indexed its character animation archives and
-read actual attack timelines. See [the findings and reproduction steps](game-file-analysis.md).
-This establishes that local attack event data can be obtained automatically.
-Follow-up [live research](enemy-reader-research.md) now reads the locked enemy,
-latest animation history frame, and normal camera pose. These reads have now
-been integrated into the preview DLL. Verifying the overhead placement
-visually and predicting contact still remain.
+READY starts `preparation_ms` (default 650 real ms, converted using `r`) before
+the press interval. Preparation, action and expiration have different labels
+and shapes. Next-hit preparation/action wins over an older hit's recovery.
+Every hit has its own phase ordinal within the occurrence.
+
+A calibrated preferred instant can emit one pulse only on a witnessed crossing
+inside the valid press interval. No first-frame catch-up pulse, full-interval
+stall catch-up or pulse after expiration is allowed. The 80 ms default visual
+envelope is clipped immediately at interval expiry. Reduced flash removes the
+brightness/size pulse; the action label and shape remain. Activation-only moves
+have no supported preferred instant, so do not emit a fabricated timing pulse.
+
+## Safety and remaining evidence
+
+Fresh validated lock identity has a separate 50 ms observation lifetime from
+animation captures. Missing, invalid or stale animation data cancels timing and
+pulses but retains a neutral LOCKED indicator while lock reads remain fresh.
+Fresh animation progression must be re-established before action resumes.
+READY may appear before coarse reach passes; action labels still require reach.
+Unverified mapped phases show WATCH without a press interval or pulse.
+
+Target lock, living player/enemy, ownership, current batch and fresh observations
+remain required. Out-of-range, away-facing, cancelled, ambiguous and disabled
+responses cannot be actionable. Reach uses approximate body bounds, distance,
+height and facing; it is not weapon collision geometry. Motion or cancellation
+between captures is unobserved until the next capture.
+
+No validated menu/playability flag is available. Existing lock/player/death
+checks and clock-stop suppression cover observed invalidation, but complete
+menu/loading suppression still requires live evidence and possibly another
+validated read. No guessed offset is added. Fixed HUD placement does not require
+camera projection; overhead mode does. A known debug camera still invalidates play.
+
+Profiles are bound to exact game/data hashes, model/animation/phase and boundary
+values. Named-form profiles stay inactive because runtime form identity is not
+observable; only explicit evidence covering the entire exact key may be applied.
+See [configuration](configuration.md), [coverage](boss-move-coverage.md), and
+[the trial template](../tests/compatibility/cue-trial-template.md).
+
+Trials must distinguish estimated press, draw submission, visible presentation,
+actual input, contact and independently confirmed outcome. The DLL observes
+only the first two. A draw call, contact spark or candidate effect 105010 alone
+is insufficient to label a successful deflect. All shipped moves remain estimated.

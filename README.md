@@ -1,73 +1,158 @@
 # Sekiro Deflect Observer
 
-A training tool with a timing slider above Wolf that anticipates selected incoming attacks in *Sekiro: Shadows Die Twice*. The player presses the buttons.
+**Read the attack. Learn the rhythm. Make the deflect yourself.**
 
-**Windows overhead cue preview. Green timing is an estimate; exact parry timing is not validated.**
+![Wolf facing a sword enemy on a snowy bridge, with the green PARRY 70% rail and jade practice moon visible](docs/images/gameplay-2026-09-18-hero.jpg)
 
-For the friend beta, use the [drop-in installation and sharing guide](docs/sharing-beta.md).
-It packages the same 0.6.3 observer with an ASI loader: copy two files beside
-`sekiro.exe` and launch through Steam. That route does not require me3 and still
-needs a live game launch trial. Do not overwrite an existing `dinput8.dll`.
+*Actual gameplay from the September 18 recording, at 00:38.500. The black side
+margins have been cropped; the game and HUD are unchanged.*
 
-Current design, rendered from the shared overlay code with synthetic attack states:
+A Windows overlay for Sekiro that identifies a locked enemy's incoming attack
+and shows its animation progress. Optional practice mode slows eligible enemy
+attacks to **90%, 80% or 70% speed** while leaving Wolf's speed unchanged.
+You control every block, deflect, dodge and counter.
 
-![0.6.3 offline design preview: READY, PARRY, DODGE and JUMP](docs/images/0.6.3-offline-design.png)
+**Current source: 0.12.4-preview.**
+[Install](#install-and-run-on-windows) · [Controls](#controls) ·
+[Gameplay walkthrough](docs/screenshots.md) · [Configuration](docs/configuration.md) ·
+[All docs](docs/README.md)
 
-[Gameplay screenshot and image provenance](docs/screenshots.md). The image above
-shows appearance, not a successful-deflect or live 0.6.3 gameplay test.
+## How it works
 
-This checkout contains a native Rust DLL, Windows build scripts, and a me3 launch profile. Version 0.6.3-preview refines the supplied reference's design with a larger glowing diamond, longer needle, moving magenta pointer, translucent ribbon wings and outlined English labels. It retains the lower player-relative placement and combo reader improvements. Green **PARRY**, orange **DODGE** for mapped grabs, and blue **JUMP** for mapped sweeps use extracted animation events and attack parameters. Unknown responses stay unverified. The visual update does not change the estimated press intervals or game acceptance windows. See [preview scope, calculation, coverage, and limits](docs/cue-preview.md) and [visual validation](docs/validation-0.6.3.md).
+1. **Lock onto a living enemy.** The top-center rail follows that target's
+   captured attack animation. Between recognized attacks it shows `LOCKED`, or
+   `PRACTICE` while practice is armed and waiting.
+2. **Read the response and moving diamond.** For a parryable wind-up, the rail
+   lights green and the diamond approaches the center. The `LB` badge names the
+   configured parry button; it can also display `L1` or `RMB`.
+3. **Watch the attack phase.** The white rail and red strike emblem mark the
+   active parryable phase. Use the enemy's movement to time your own input.
 
-The data contains 2,161 phases across 54 models: 450 green estimates, 39 dodge phases, and 58 jump phases. Chained Ogre and Guardian Ape have selected mappings; this is not every enemy, attack, or form. Stricter response checks remove questionable green prompts from 0.5.0. These counts describe data, not verified gameplay support. See [the validation record](docs/validation-0.6.md).
+![Gameplay loop showing the diamond approaching the center, the white active-phase cue, and the return to PRACTICE](docs/images/gameplay-2026-09-18-demo.gif)
 
-The 0.6.0 gameplay trial exposed the Ogre's auxiliary animation hiding its attack track. Version 0.6.1 corrects that reader selection using the current engine batch; the corrected cues require another live timing check.
+*00:36.800–00:40.400 from the same recording, at normal playback speed; reduced
+to 640 × 360 and 15 fps for the README. [Full-size stills and explanations](docs/screenshots.md).*
 
-The handover's claim of an earlier Cheat Engine prototype is unconfirmed; the user has never had it. No prototype is required. Public source research provides the candidate layout; live validation remains pending.
+The cue describes the enemy's animation phase. **It does not confirm contact,
+detect a successful deflect, or give an exact “press now” instruction.** Default
+incoming mode can show an attack even when the enemy is out of reach.
 
-The requested first usable version is an overhead **parry-now cue** driven by incoming attack timing. The preview implements placement and an attack-based estimate; predicting actual player contact and verifying successful deflects remain. The optional player-effect panel is a research aid. See [the cue requirements and timing research](docs/parry-cue.md). The tool does not automate inputs or change the deflect window.
+| Cue | Meaning |
+| --- | --- |
+| **PARRY** | The classified attack permits deflection. |
+| **DODGE** | A classified grab; no dodge direction is chosen. |
+| **JUMP** | A classified low sweep. |
+| **MIKIRI** | A thrust with a supported Mikiri counter route. |
+| **NO PARRY** | Deflection is disabled; no specific alternative is established. |
+| **UNKNOWN** | The attack is known but its response is unresolved. |
+| **LOCKED** | A fresh target is available without a current attack cue. |
 
-## Build and run on Windows
+Mikiri hints assume you have unlocked the skill. Set `mikiri = false` if you
+have not; supported deflectable thrusts then show PARRY. These response types
+come from the implementation; the new recording illustrates the PARRY sequence.
+See [classification and coverage](docs/incoming-attacks.md) for the other types.
 
-Follow [the Windows instructions](docs/windows.md). With Rust and the Visual Studio C++ build tools installed, run this from the source directory:
+## Practice at your pace
+
+Press **F11** to enable practice for this session. **Shift+F11** cycles
+**80% → 90% → 70% → 80%** and saves your selected speed. Practice starts **off**
+each time you launch the game; the speed selection is remembered.
+
+The crescent moon in the upper-right corner shows `OFF` or `ON` and the selected
+percentage, even without a target. Its color reports the controller's status:
+
+| Moon | Status |
+| --- | --- |
+| Gray | Practice is off. |
+| Gold | Armed and waiting for an eligible attack. |
+| Jade | The controller reports an applied override on the current target. |
+| Amber **!** | Attention needed; open F9 for the reason. |
+
+In the main image, **PARRY 70%** and the jade moon report an applied speed
+override. That means 70% of the enemy's original animation speed, or 30% slower.
+The percentage next to the moon alone is the selected preset, even while waiting.
+
+Practice affects eligible parryable, thrust and sweep attack phases on your
+locked target. Grabs, unknown/no-parry moves and other enemies are excluded.
+Wolf's speed and deflect windows are unchanged. Turning off attack hints does
+not disable practice; **F8 hides the HUD and disarms it**. See
+[practice behavior and limits](docs/enemy-speed-practice.md).
+
+## Install and run on Windows
+
+1. Close Sekiro completely. Extract
+   `SekiroDeflectObserver-0.12.4-preview-windows-x64.zip` into its own folder.
+   Use a built package supplied by the author, or [build from source](#build-and-check).
+   GitHub's **Code → Download ZIP** contains source, not the ready-to-run mod.
+2. Install [me3](https://github.com/garyttierney/me3/releases), keep Steam running,
+   then double-click `observer.me3` or run `launch-observer.cmd` from the package.
+3. Load a save, lock onto a living enemy, and look for the top-center rail.
+   **F9** shows the loaded version and diagnostics.
+4. Press **F11** if you want optional enemy-speed practice.
+
+Players need no Rust, Python, Visual Studio or Cheat Engine. Use one observer
+loading method per session. The historical 0.6.3 drop-in package does not contain
+the current features; do not overwrite another mod's `dinput8.dll`.
+
+Settings live in `%LOCALAPPDATA%/SekiroDeflectObserver/cue.toml`. The file is
+created on first use and reloaded once per second. For an older layout, use
+`anchor = "top"`, `width = 480` and F10 to reset offsets. See
+[all settings](docs/configuration.md) and [Windows troubleshooting](docs/windows.md#troubleshoot).
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| F6 / F7 | Lower / raise the rail by 8 reference pixels; save the offset. |
+| F8 | Show / hide the gameplay HUD; hiding also disarms practice. |
+| F9 | Show / hide the diagnostics panel and loaded version. |
+| F10 | Reset horizontal and vertical offsets. |
+| F11 | Toggle enemy-speed practice for this session. |
+| Shift+F11 | Switch and save 80% / 90% / 70% speed without changing on/off. |
+
+Hotkeys require a fresh press while the game is focused and pass through to the
+game. Combat input is never captured or automated. Lost, dead, switched or stale
+targets clear attack guidance; the observation freshness ceiling is 50 ms.
+
+To uninstall, close the game and stop using the observer's me3 profile. Remove
+its extracted folder if desired, keep shared loader files, and launch normally
+through Steam. A rebuilt DLL requires a full game restart. Removing the local
+config while the game is closed resets settings.
+
+## Status and coverage
+
+The [new recording](docs/screenshots.md) shows the live PARRY rail, active-phase
+emblem and 70% practice status. It provides a visual demonstration, not a
+controlled measurement of slowdown or deflect success. The clip does not show
+F9 or identify the loaded DLL hash. Exact timing, cleanup across game transitions,
+boss/form coverage and the earlier scene-tint report still need dedicated checks.
+See [current validation](docs/validation-0.12.4.md).
+
+The fallback data classifies **2,112 phases across 53 models**, including **293
+unknown** phases. Another 3,730 entries describe 78 NPC behavior variations;
+these overlap the fallback data and are not additional unique moves or validated
+successes. [Detailed evidence](docs/incoming-attacks.md) and
+[per-phase coverage](docs/incoming-coverage.json) document the limits.
+
+The overlay uses no telemetry or account. F11 explicitly enables temporary
+enemy animation-speed writes; it starts disabled. Game files, saves, Wolf's
+speed and deflect windows are not modified. Optional `incoming_cues = false`
+selects the separate [legacy estimated timing mode](docs/parry-cue.md).
+
+## Build and check
+
+Install the pinned Rust toolchain through rustup and Visual Studio Build Tools
+with Desktop C++ and the Windows SDK. From Developer PowerShell:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-Extract the ZIP created in `dist`, install [me3](https://github.com/garyttierney/me3/releases), start Steam, and double-click the extracted `observer.me3` while Sekiro is closed.
+The script checks formatting, Clippy and tests, builds the MSVC release DLL,
+checks non-game host rejection, and packages configuration, licenses and
+checksums. It replaces a same-version ZIP; preserve previous candidates first.
+Generated tables are included, so building does not require game archives.
 
-The build creates `sekiro_deflect_observer.dll`. F6 lowers the bar; F7 raises it (session only). F8 hides or shows the cue; F9 toggles diagnostics. Close Sekiro fully before launching a different package; a running process retains its loaded DLL.
-
-Built packages require no Cheat Engine, Rust, Visual Studio, or Python on the player's PC. The Windows CI workflow also builds a downloadable test artifact. These are engineering test packages, not stable mod releases.
-
-## Test the project
-
-Start with [the native first-launch checklist](docs/windows.md#test-the-first-launch). The older [Cheat Engine research guide](docs/testing.md) applies only if that separate prototype becomes available.
-
-- [Gameplay checklist](tests/manual/gameplay-checklist.md) covers taps, guard, combat, and game transitions.
-- [Investigate effect 105010](docs/reverse-engineering.md) explains how to compare observations without assuming the effect means a deflect window.
-- [Session report template](tests/compatibility/session-template.md) records the exact build, setup, evidence, and failures.
-- [Automated test requirements](tests/README.md) defines the state and history contracts for implementation.
-- [Compatibility status](docs/compatibility.md) lists the platforms awaiting validation.
-- [Test a native release candidate](docs/release-testing.md) covers installation, removal, packaging, and release evidence.
-
-## Intended design
-
-```text
-Sekiro enemy target, attack timing, and camera
-  -> version-gated read-only observations
-  -> experimental advance response estimate
-  -> timing slider positioned above Wolf
-```
-
-A failed or stale observation must suppress the parry cue. The existing diagnostic panel represents read failure as `Unknown`. The released observer is intended to operate without network requests.
-
-## Development status
-
-Implemented: a DirectX 11 overlay, F8 visibility, executable SHA-256 gate, bounded read-only candidate traversal, stale/error handling, diagnostic transition history, timestamped sample logs, tests, and Windows packaging. See [the architecture](docs/architecture.md).
-
-The preview includes bounded locked-target and animation history reads, camera projection, shared animation imports, attack-parameter response classification, and a timing slider above the player. The anchor remains a lowered standing-height approximation rather than an animated head bone. Pending: new placement verification, attack/contact timing and reach geometry, runtime behavior variation and blend handling, and successful-deflect verification. Complete-window statistics and reaction-time scores are not required. A matching executable hash does not establish gameplay correctness.
-
-Local analysis on 2026-09-12 successfully indexed 142 character animation archives and extracted attack event timelines from the installed game. This supplies data for deriving timings automatically rather than asking the player to chart every enemy. See [the measured findings and remaining runtime work](docs/game-file-analysis.md).
-
-Windows is the initial target. Recording 02 shows the older overlay rendering before visible contact sparks in one soldier exchange; it does not validate the new version or exact input timing. Proton and macOS remain unverified. [Compatibility status](docs/compatibility.md) records platform evidence.
+See [Windows build instructions](docs/windows.md),
+[release checks](docs/release-testing.md), [architecture](docs/architecture.md)
+and [feature ownership](docs/feature-boundaries.md).

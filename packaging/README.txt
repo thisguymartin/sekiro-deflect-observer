@@ -1,97 +1,106 @@
-Sekiro Deflect Observer 0.6.3-preview
-Windows x64 incoming-attack cue preview
+Sekiro Deflect Observer 0.12.4-preview
+Incoming attack HUD and optional enemy-speed practice for Windows x64
 
-The timing slider follows Wolf and anticipates selected locked-enemy attacks.
-You press the buttons yourself. Timing and response classification remain
-experimental; attack activation is not confirmed contact with the player.
+Follow a locked enemy's attack animation with a top-center rail and response
+label. You control every defensive input. Optional F11 practice slows eligible
+enemy attacks to 90%, 80% or 70% of their original animation speed.
 
-INSTALL AND RUN
+INSTALL
+1. Close Sekiro completely and extract this package into its own folder.
+2. Install me3 separately: https://github.com/garyttierney/me3/releases
+3. Keep Steam running and open observer.me3 or launch-observer.cmd.
+4. Load a save, lock onto a living enemy and look for the top-center rail.
+   F9 shows the loaded version and diagnostics. F11 enables optional practice.
 
-1. Close Sekiro fully. Keep Steam running.
-2. Keep this package's extracted files together in their own observer folder.
-3. Double-click observer.me3, or run launch-observer.cmd.
-   me3 must be installed: https://github.com/garyttierney/me3/releases
-4. Load a save and lock onto an enemy. Look just above Wolf for the slider.
-5. Follow the diamond toward the colored section and its English action label:
-   GREEN / PARRY: estimated deflect press timing.
-   ORANGE / DODGE: mapped incoming grab; dodge/evade, direction is not predicted.
-   BLUE / JUMP: mapped low sweep; estimated jump cue.
-   GRAY / UNVERIFIED: no reliable response or timing guidance for this attack.
-   LOCKED: target is visible to the observer, with no active timing cue.
+Use only one observer loading method. No Rust, Python or Cheat Engine is needed.
+Do not overwrite another mod's dinput8.dll. An older drop-in observer must not
+also load alongside this profile. A rebuilt DLL needs a full process restart.
 
-F6 lowers the bar; F7 raises it, by 8 reference pixels per press (session only).
-F8 hides/shows the indicator. F9 shows/hides optional diagnostics.
-Close Sekiro to stop the DLL. Start normally through Steam for an ordinary run.
-A running game keeps the previously loaded version until it exits completely.
+HOW TO READ THE HUD
+PARRY: the classified phase permits deflection.
+DODGE: a classified grab; no safe dodge direction is chosen.
+JUMP: a classified low sweep.
+MIKIRI: a thrust with an explicit supported counter route.
+NO PARRY: deflection disabled; no specific alternative established.
+UNKNOWN: an attack is known but its response is unresolved.
+LOCKED: fresh target without a current attack cue.
+PRACTICE: practice is armed and waiting for an eligible phase.
 
-WHAT CHANGED
+A green segment and approaching diamond show parryable wind-up. A white
+segment and red strike emblem mark its active phase. This is not an exact
+press-time instruction, confirmed weapon contact or successful-deflect signal.
+Default incoming mode can show an attack even when the enemy is out of reach.
 
-Version 0.6.3 refines the reference-inspired design: a larger ivory diamond,
-longer needle, moving magenta pointer, brighter chevrons and translucent ribbon
-wings. Outlined English text replaces the boxed label. The magenta pointer only
-identifies the cursor; green/orange/blue zones and English text give the response.
-Unknown or out-of-reach phases use a gray pointer. This is a visual update;
-neither the estimated press interval nor Sekiro's actual deflect window changes.
+PRACTICE
+F11 starts OFF every process. Shift+F11 cycles 80% -> 90% -> 70% -> 80% and saves
+the level without changing on/off. 70% speed means 30% slower animation.
+The upper-right crescent shows OFF/ON plus the selected percentage:
+  Gray = off. Gold = armed/waiting. Jade = applied. Amber ! = check F9.
+The moon remains visible without a target and while off. It grows fuller at
+lower speeds. Its percentage alone is a selection, not proof of active slowdown.
+An applied target speed is also appended to the rail, for example PARRY 70%.
 
-The 0.6.0 gameplay trial revealed that the Ogre's auxiliary animation hid its
-attack track, leaving a neutral bar. Version 0.6.1 reads the current animation
-batch and selects the mapped attack. It does not reuse older history; ambiguous
-competing attack tracks suppress guidance. This correction requires a restart.
+Eligible locked-target parry/thrust/sweep attack phases can be slowed. Other
+enemies, grabs, unknowns and no-parry moves are excluded. Wolf's speed and
+deflect windows are untouched. Projectile flight and independent timers are
+not rescaled. Disabling attack hints does not disable practice.
+F11 off releases the override. F8 hides the HUD and disarms practice.
+Focus/lock loss, death and attack ending attempt ownership-checked cleanup.
+Read/write failures retry; external speed changes pause until explicitly rearmed.
 
-The bar is lower, the diamond is larger, and the action text is easier to read.
-The 360 x 12 timing lane (424 pixels including decorative wings) scales with
-resolution. Its anchor follows Wolf's position
-plus standing height; it does not yet follow the animated head during crouches
-or acrobatics. F6/F7 allow placement adjustment without editing files.
+CONTROLS (fresh press while the game is focused)
+F6 / F7: lower / raise the rail by 8 reference pixels and save.
+F8: show / hide the HUD; hiding also disarms practice.
+F9: show / hide diagnostics and loaded version.
+F10: reset horizontal and vertical offsets.
+F11: toggle practice for this session.
+Shift+F11: switch and save the selected enemy speed.
+Hotkeys pass through. The observer never captures or generates combat input.
 
-Parry guidance remains 150 ms of animation time before eligible activation.
-Dodge and jump use a separate experimental 300 ms advance cue. Neither changes
-the game's acceptance window. Playback speed changes affect real-time duration.
-The label expires at activation; it is not extended to imply a longer window.
-Guard input does not start the bar. Mapped combo phases get separate cycles;
-overlapping hitboxes are combined and upcoming cues take priority over recovery.
+SETTINGS
+%LOCALAPPDATA%/SekiroDeflectObserver/cue.toml
+Created on first use, reloaded once per second. Malformed reloads retain the
+last valid configuration. The bundled cue.toml documents defaults. Remove the
+local config while closed to reset everything.
+For an older layout: anchor = "top", width = 480, and F10 to clear offsets.
+parry_button = "LB" selects the badge; "L1" and "RMB" are supported.
+mikiri = false falls back to PARRY for supported deflectable thrusts if you
+have not unlocked Mikiri. The observer does not read skill-unlock state.
+reduced_flash = true suppresses the white/red active-phase transition.
+practice_speed accepts 0.5..1.0; 1.0 requests no slowdown.
+incoming_cues = false selects the older estimated press-window mode.
 
-COVERAGE AND LIMITS
+EVIDENCE AND LIMITS
+The September 18 recording shows the live PARRY rail, active-phase emblem and
+70% practice states. It does not show F9/build identity or measure slowdown,
+input timing, successful deflects or cleanup across every game transition.
+This remains an experimental preview. See the timestamped gameplay walkthrough:
+https://github.com/thisguymartin/sekiro-deflect-observer/blob/main/docs/screenshots.md
 
-2,161 phases across 54 models; 450 green estimates across 39 models, plus
-39 dodge phases and 58 jump phases. These are extracted data counts, not
-verified support for all enemies. Stricter checks remove questionable green
-prompts from the older version. Unsupported and ambiguous attacks stay gray.
+Fallback data classifies 2,112 phases across 53 models; 293 remain unknown.
+NPC behavior variants add weapon-aware choices. These are classifications,
+not unique moves or proven gameplay successes. Full boss/form coverage is
+not claimed. Invalid, dead, lost, switched or stale targets clear guidance.
+The exact supported executable SHA-256 is:
+637aca527538c0ec6e1f136c8ed66046e95dfbdbb1f51926e134d9916398b856
 
-Chained Ogre has 5 mapped grab phases and 6 green estimates. Guardian Ape has
-1 mapped grab phase, 4 jump phases and 4 green estimates, including animation
-variants. Other moves/forms remain unverified. Some bosses have only partial
-data coverage; pure projectiles and a complete perilous-attack classifier are
-not supported. DODGE does not guarantee a safe direction or dodge timing.
+F11 enables temporary enemy animation-speed writes. The original value is
+restored only while the same owner/value remains valid. Game files and saves
+are not edited. No account, telemetry or automatic retaliation is provided.
 
-A fresh neutral LOCKED bar survives idle or unavailable animation state.
-Timing requires a progressing clock. Lost locks, invalid dependent reads,
-stale data, dead actors and invalid projections suppress guidance.
-Approximate reach/facing checks are not weapon collision geometry.
+LOGS AND REMOVAL
+Logs: %LOCALAPPDATA%/SekiroDeflectObserver
+Startup records actual DLL/game hashes. Local bounded CSVs record observations,
+alerts and practice transitions; each stops at 16 MiB. F9 shows status/errors.
+A logged draw or checked speed write does not prove contact or measured slowdown.
+The earlier scene-tint report still needs a controlled live comparison.
 
-Recording 02 of the older build shows a soldier cue before contact sparks.
-Recordings 03/04 show the 0.6.0 bar closer to Wolf and the Ogre reader failure.
-The 0.6.1 correction passes regression checks, but its live boss responses,
-successful deflects and precise contact timing still need validation. Normal
-camera at 16:9 or wider matching display is supported.
+Close Sekiro to unload. Stop using this me3 profile and remove its extracted
+folder if desired. Keep loader files shared by other mods and launch normally
+through Steam. An independently installed ASI observer needs separate removal.
+F8 hides the HUD and disarms practice; it does not unload the hook.
 
-RUN REQUIREMENTS AND LOGS
-
-No Rust, Visual Studio, Python, or Cheat Engine is needed to run this package.
-The DLL observes game state read-only, uses a DirectX 11 render hook, and makes
-no network requests or automated gameplay inputs. The supported executable
-SHA-256 is 637aca527538c0ec6e1f136c8ed66046e95dfbdbb1f51926e134d9916398b856.
-
-Logs: %LOCALAPPDATA%\SekiroDeflectObserver
-observer-PID.cue.csv: observations, read stages, animation and press estimates.
-observer-PID.render.csv: frame drawing decisions and submitted action labels.
-observer-PID.samples.csv: separate candidate-effect research diagnostics.
-Each CSV stops at 16 MiB. F9 reports log state and dropped render records.
-A render submission is not proof of presentation, contact or successful input.
-An estimated_press cue-log row is not proof that the bar was drawn.
-
-Source and detailed evidence:
+Source, configuration and current validation:
 https://github.com/thisguymartin/sekiro-deflect-observer
-See docs/cue-preview.md and docs/validation-0.6.md in the source checkout.
-See LICENSE and THIRD-PARTY-NOTICES.txt for license information.
-
+See docs/validation-0.12.4.md, docs/configuration.md, docs/incoming-attacks.md,
+LICENSE and THIRD-PARTY-NOTICES.txt.

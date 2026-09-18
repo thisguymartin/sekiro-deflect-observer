@@ -69,7 +69,7 @@ pub fn animation(m: &impl Memory, module: usize) -> Result<Animation, ReadError>
     decode_animation(raw)
 }
 
-fn decode_animation(raw: [u8; 20]) -> Result<Animation, ReadError> {
+pub(crate) fn decode_animation(raw: [u8; 20]) -> Result<Animation, ReadError> {
     let id = i32::from_le_bytes(raw[0..4].try_into().unwrap());
     let previous = f32::from_le_bytes(raw[4..8].try_into().unwrap());
     let time = f32::from_le_bytes(raw[8..12].try_into().unwrap());
@@ -107,6 +107,7 @@ pub fn animation_for_model(
     m: &impl Memory,
     module: usize,
     model: i32,
+    npc_param: Option<i32>,
 ) -> Result<Animation, ReadError> {
     let bounds = bytes::<8>(m, module, 0xe8)?;
     let head = i32::from_le_bytes(bounds[..4].try_into().unwrap());
@@ -122,26 +123,33 @@ pub fn animation_for_model(
         time: 0.0,
         sequence: 0,
     };
-    let mut selected: Option<Animation> = None;
+    let catalog = crate::attack::Catalog::new(model, npc_param);
+    let mut selected: Option<(crate::attack::AnimationPriority, Animation)> = None;
+    let mut ambiguous = false;
     for step in 0..count {
         let slot = 0x20 + ((begin as usize + step) % 10) * 0x14;
         let raw = bytes::<20>(m, module, slot)?;
         let frame = decode_animation(raw)?;
         records.push((slot, raw));
         latest = frame;
-        let key = (model, frame.id);
-        let relevant = crate::attack_timings::ATTACKS
-            .binary_search_by_key(&key, |a| (a.0, a.1))
-            .is_ok()
-            || crate::attack_timings::SPECIALS
-                .binary_search_by_key(&key, |a| (a.0, a.1))
-                .is_ok();
-        if relevant {
-            if selected.is_some_and(|prior| prior.id != frame.id) {
-                // Blend/competing attacks need more than a guessed priority.
-                return Err(ReadError::InvalidAnimation);
+        let priority = catalog.priority(frame.id);
+        if priority == crate::attack::AnimationPriority::Unmapped {
+            continue;
+        }
+        match selected {
+            None => {
+                selected = Some((priority, frame));
+                ambiguous = false;
             }
-            selected = Some(frame);
+            Some((current, _)) if priority > current => {
+                selected = Some((priority, frame));
+                ambiguous = false;
+            }
+            Some((current, prior)) if priority == current => {
+                ambiguous |= prior.id != frame.id;
+                selected = Some((priority, frame));
+            }
+            Some(_) => {}
         }
     }
     // Recheck bytes as well as indices: the ring could wrap during a read.
@@ -153,7 +161,11 @@ pub fn animation_for_model(
     if bytes::<8>(m, module, 0xe8)? != bounds {
         return Err(ReadError::ChangedDuringRead);
     }
-    Ok(selected.unwrap_or(latest))
+    if ambiguous {
+        Err(ReadError::InvalidAnimation)
+    } else {
+        Ok(selected.map_or(latest, |(_, frame)| frame))
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -187,39 +199,73 @@ impl Camera {
             && self.far > self.near
     }
     pub fn project(self, anchor: [f32; 3], display: [f32; 2]) -> Option<[f32; 2]> {
+        self.project_checked(anchor, display).ok()
+    }
+
+    /// Fit a centered camera viewport into any positive render-surface size.
+    /// Preserve projection proportions through pillarboxing or letterboxing.
+    pub fn project_checked(
+        self,
+        anchor: [f32; 3],
+        display: [f32; 2],
+    ) -> Result<[f32; 2], &'static str> {
         if !self.valid()
             || !anchor.iter().all(|v| v.is_finite())
             || !display.iter().all(|v| v.is_finite() && *v > 0.0)
-            || (display[0] / display[1] - self.aspect).abs() > 0.03
         {
-            return None;
+            return Err("projection_invalid_input");
         }
         let delta = subtract(anchor, self.position);
         let z = dot(delta, self.forward);
         if z <= self.near || z >= self.far {
-            return None;
+            return Err("projection_depth_rejected");
         }
         let tangent = (self.fov / 2.0).tan();
         let x = dot(delta, self.right) / (z * tangent * self.aspect);
         let y = dot(delta, self.up) / (z * tangent);
         if !(-1.0..1.0).contains(&x) || !(-1.0..1.0).contains(&y) {
-            return None;
+            return Err("projection_anchor_offscreen");
         }
-        Some([(x + 1.0) * 0.5 * display[0], (1.0 - y) * 0.5 * display[1]])
+        let viewport_width = (display[1] * self.aspect).min(display[0]);
+        let viewport_height = viewport_width / self.aspect;
+        Ok([
+            display[0] * 0.5 + x * 0.5 * viewport_width,
+            display[1] * 0.5 - y * 0.5 * viewport_height,
+        ])
     }
+}
+
+/// Join key and monotonic read/publication metadata; never an attack identity.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CaptureMetadata {
+    pub capture_id: u64,
+    pub observation_id: u64,
+    pub source: &'static str,
+    pub read_start: Duration,
+    pub read_finished: Duration,
+    pub published_at: Duration,
+    pub owner_generation: u64,
 }
 
 #[derive(Clone, Debug)]
 pub struct Target {
+    pub metadata: CaptureMetadata,
+    /// Original animation capture time in the worker epoch; None for polling.
+    pub captured_at: Option<Duration>,
+    /// Independently revalidated local-player identity, not a cached actor handle.
+    pub player_instance: usize,
+    pub animation_module: usize,
     pub handle: u32,
     pub model: i32,
+    /// Stable NPC parameter identity, independently checked against this model.
+    pub npc_param: Option<i32>,
     pub animation: Animation,
     pub position: [f32; 3],
     pub anchor: [f32; 3],
     pub facing: [f32; 3],
     pub player_position: [f32; 3],
     pub body_radius: f32,
-    pub camera: Camera,
+    pub camera: Option<Camera>,
     pub animation_error: Option<ReadError>,
 }
 
@@ -326,9 +372,17 @@ pub fn observe_traced(
     }
     trace.stage = "animation";
     let model = integer(m, actor, 0x68)? / 10000;
-    let mut frame = animation_for_model(m, animation_module, model);
+    // ChrIns -> ChrRes (+30) -> NpcParam ID (+628), from the inspected SDT
+    // structure. Optional: an unavailable/unmapped identity keeps the strict
+    // all-variants response. Never derive a weapon from animation-bank digits.
+    let npc_identity = pointer(m, actor, 0x30).ok().and_then(|resource| {
+        let npc = integer(m, resource, 0x628).ok()?;
+        crate::attack::npc_variation(model, npc).map(|_| (resource, npc))
+    });
+    let npc_param = npc_identity.map(|(_, npc)| npc);
+    let mut frame = animation_for_model(m, animation_module, model, npc_param);
     if frame == Err(ReadError::ChangedDuringRead) {
-        frame = animation_for_model(m, animation_module, model);
+        frame = animation_for_model(m, animation_module, model, npc_param);
     }
     // Keep a freshly resolved lock visible if only its animation is unavailable.
     // There is no history fallback and no green cue for a failed animation read.
@@ -357,30 +411,17 @@ pub fn observe_traced(
     // A head-bone anchor remains future work for crouches and acrobatics.
     let anchor = player_anchor(player_position);
     let facing = vector(m, accessor, 0x30)?;
-    trace.stage = "camera";
-    let field = pointer(m, base, 0x3d5c0a0)?;
-    let render = pointer(m, field, 0x20)?;
-    if integer(m, render, 0xe0)? != 0 {
-        trace.stage = "debug_camera";
-        return Ok(None);
-    }
-    let cam = pointer(m, field, 0x30)?;
-    let lens = bytes::<16>(m, cam, 0x50)?;
-    let lens: [f32; 4] =
-        std::array::from_fn(|i| f32::from_le_bytes(lens[i * 4..i * 4 + 4].try_into().unwrap()));
-    let camera = Camera {
-        right: vector(m, cam, 0x10)?,
-        up: vector(m, cam, 0x20)?,
-        forward: vector(m, cam, 0x30)?,
-        position: vector(m, cam, 0x40)?,
-        fov: lens[0],
-        aspect: lens[1],
-        near: lens[2],
-        far: lens[3],
+    // Projection is optional for configured screen-space placement. The known
+    // debug-camera flag still invalidates gameplay, but unavailable geometry
+    // must not be confused with a failed target/HP/animation observation.
+    let camera = match read_camera(m, base) {
+        Ok(Some(camera)) => Some(camera),
+        Ok(None) => {
+            trace.stage = "debug_camera";
+            return Ok(None);
+        }
+        Err(_) => None,
     };
-    if !camera.valid() {
-        return Err(ReadError::InvalidCamera);
-    }
     trace.stage = "ownership_recheck";
     if pointer(m, base, 0x3d7a1e0)? != world
         || pointer(m, world, 0x88)? != player
@@ -401,10 +442,9 @@ pub fn observe_traced(
         || pointer(m, player, 0x1ff8)? != player_modules
         || pointer(m, player_modules, 0x68)? != player_physics
         || pointer(m, player_modules, 0x18)? != player_data
-        || pointer(m, base, 0x3d5c0a0)? != field
-        || pointer(m, field, 0x30)? != cam
-        || pointer(m, field, 0x20)? != render
-        || integer(m, render, 0xe0)? != 0
+        || integer(m, actor, 0x68)? / 10000 != model
+        || integer(m, data, 0x130)? <= 0
+        || integer(m, player_data, 0x130)? <= 0
     {
         return Err(ReadError::ChangedDuringRead);
     }
@@ -413,9 +453,22 @@ pub fn observe_traced(
     } else {
         "locked"
     };
+    if let Some((resource, npc)) = npc_identity {
+        if pointer(m, actor, 0x30) != Ok(resource) || integer(m, resource, 0x628) != Ok(npc) {
+            return Err(ReadError::ChangedDuringRead);
+        }
+    }
     Ok(Some(Target {
+        metadata: CaptureMetadata {
+            source: "poll",
+            ..Default::default()
+        },
+        captured_at: None,
+        player_instance: player,
+        animation_module,
         handle,
         model,
+        npc_param,
         animation,
         position,
         anchor,
@@ -431,22 +484,88 @@ pub fn player_anchor(position: [f32; 3]) -> [f32; 3] {
     [position[0], position[1] + 1.55, position[2]]
 }
 
-fn in_reach(target: &Target) -> bool {
+fn read_camera(m: &impl Memory, base: usize) -> Result<Option<Camera>, ReadError> {
+    let field = pointer(m, base, 0x3d5c0a0)?;
+    let render = pointer(m, field, 0x20)?;
+    if integer(m, render, 0xe0)? != 0 {
+        return Ok(None);
+    }
+    let cam = pointer(m, field, 0x30)?;
+    let lens = bytes::<16>(m, cam, 0x50)?;
+    let lens: [f32; 4] =
+        std::array::from_fn(|i| f32::from_le_bytes(lens[i * 4..i * 4 + 4].try_into().unwrap()));
+    let camera = Camera {
+        right: vector(m, cam, 0x10)?,
+        up: vector(m, cam, 0x20)?,
+        forward: vector(m, cam, 0x30)?,
+        position: vector(m, cam, 0x40)?,
+        fov: lens[0],
+        aspect: lens[1],
+        near: lens[2],
+        far: lens[3],
+    };
+    if !camera.valid() {
+        return Err(ReadError::InvalidCamera);
+    }
+    if pointer(m, base, 0x3d5c0a0)? != field
+        || pointer(m, field, 0x30)? != cam
+        || pointer(m, field, 0x20)? != render
+        || integer(m, render, 0xe0)? != 0
+    {
+        return Err(ReadError::ChangedDuringRead);
+    }
+    Ok(Some(camera))
+}
+
+pub(crate) fn in_reach(target: &Target) -> bool {
+    reach(target).reason == "within_coarse_reach"
+}
+
+/// Diagnostic decomposition of the unchanged coarse gate, not collision data.
+#[derive(Clone, Copy, Debug)]
+pub struct Reach {
+    pub distance: f32,
+    pub distance_limit: f32,
+    pub vertical_delta: f32,
+    pub facing_length: f32,
+    pub facing_cosine: Option<f32>,
+    pub reason: &'static str,
+}
+
+pub fn reach(target: &Target) -> Reach {
     let delta = subtract(target.player_position, target.position);
     let distance = dot(delta, delta).sqrt();
     let horizontal = (delta[0] * delta[0] + delta[2] * delta[2]).sqrt();
     let facing_length =
         (target.facing[0] * target.facing[0] + target.facing[2] * target.facing[2]).sqrt();
-    distance.is_finite()
-        && target.body_radius.is_finite()
-        && (0.0..=6.0).contains(&target.body_radius)
-        && distance <= MAX_DISTANCE + target.body_radius
-        && delta[1].abs() <= 1.5
-        && horizontal >= 0.1
-        && (0.9..=1.1).contains(&facing_length)
-        && (delta[0] * target.facing[0] + delta[2] * target.facing[2])
-            / (horizontal * facing_length)
-            >= 0.3
+    let cosine =
+        (delta[0] * target.facing[0] + delta[2] * target.facing[2]) / (horizontal * facing_length);
+    let reason = if !distance.is_finite()
+        || !target.body_radius.is_finite()
+        || !(0.0..=6.0).contains(&target.body_radius)
+    {
+        "reach_invalid_geometry"
+    } else if distance > MAX_DISTANCE + target.body_radius {
+        "reach_distance"
+    } else if delta[1].abs() > 1.5 {
+        "reach_height"
+    } else if horizontal < 0.1 {
+        "reach_coincident"
+    } else if !(0.9..=1.1).contains(&facing_length) {
+        "reach_invalid_facing"
+    } else if !cosine.is_finite() || cosine < 0.3 {
+        "reach_away_facing"
+    } else {
+        "within_coarse_reach"
+    };
+    Reach {
+        distance,
+        distance_limit: MAX_DISTANCE + target.body_radius,
+        vertical_delta: delta[1],
+        facing_length,
+        facing_cosine: cosine.is_finite().then_some(cosine),
+        reason,
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -471,6 +590,8 @@ pub enum Response {
     Parry,
     Dodge,
     Jump,
+    Mikiri,
+    Avoid,
 }
 impl Response {
     pub fn label(self) -> &'static str {
@@ -479,6 +600,8 @@ impl Response {
             Self::Parry => "parry",
             Self::Dodge => "dodge",
             Self::Jump => "jump",
+            Self::Mikiri => "mikiri",
+            Self::Avoid => "avoid",
         }
     }
     fn lead(self) -> f32 {
@@ -489,7 +612,7 @@ impl Response {
     }
 }
 
-fn phase_response(target: &Target, start: f32, classified: bool) -> Response {
+pub(crate) fn phase_response(target: &Target, start: f32, classified: bool) -> Response {
     let entries = crate::attack_timings::RESPONSES;
     let key = (target.model, target.animation.id);
     let first = entries.partition_point(|a| (a.0, a.1) < key);
@@ -584,7 +707,7 @@ pub fn attack_mapped(target: &Target) -> bool {
 #[derive(Default)]
 pub struct LiveCue {
     pub latest: Option<(Duration, Target)>,
-    last_frame: Option<(u32, i32, i32, f32)>,
+    last_frame: Option<(usize, usize, u32, i32, i32, f32)>,
     progressed: Option<Duration>,
     pub trace: ReadTrace,
     pub read_error: Option<ReadError>,
@@ -595,13 +718,15 @@ impl LiveCue {
         match value {
             Ok(Some(target)) => {
                 let frame = (
+                    target.player_instance,
+                    target.animation_module,
                     target.handle,
+                    target.model,
                     target.animation.id,
-                    target.animation.sequence,
                     target.animation.time,
                 );
                 if self.last_frame != Some(frame) {
-                    self.progressed = Some(at);
+                    self.progressed = Some(target.captured_at.unwrap_or(at));
                 }
                 self.last_frame = Some(frame);
                 self.latest = Some((at, target));
@@ -620,11 +745,20 @@ impl LiveCue {
                 .is_some_and(|at| now.saturating_sub(at) < FRESHNESS)
     }
     pub fn current(&self, now: Duration) -> Option<&Target> {
-        let (at, target) = self.latest.as_ref()?;
-        if now.saturating_sub(*at) >= FRESHNESS {
+        let target = self.current_lock(now)?;
+        let (at, _) = self.latest.as_ref()?;
+        let source = target.captured_at.unwrap_or(*at);
+        if now.checked_sub(source)? >= FRESHNESS {
             return None;
         }
         Some(target)
+    }
+
+    /// Fresh validated lock identity, independent of animation-capture age.
+    /// Only neutral feedback may use this when `current` has expired.
+    pub fn current_lock(&self, now: Duration) -> Option<&Target> {
+        let (at, target) = self.latest.as_ref()?;
+        (now.checked_sub(*at)? < FRESHNESS).then_some(target)
     }
 }
 
@@ -648,8 +782,13 @@ mod tests {
     }
     fn target() -> Target {
         Target {
+            metadata: CaptureMetadata::default(),
+            captured_at: None,
+            player_instance: 0x30000,
+            animation_module: 0xc0000,
             handle: 0x10004001,
             model: 1010,
+            npc_param: None,
             animation: Animation {
                 id: 3000,
                 previous: 0.59,
@@ -661,7 +800,7 @@ mod tests {
             facing: [0.0, 0.0, -1.0],
             player_position: [0.0; 3],
             body_radius: 0.0,
-            camera: camera(),
+            camera: Some(camera()),
             animation_error: None,
         }
     }
@@ -761,10 +900,71 @@ mod tests {
         ] {
             assert!(c.project(point, [1920.0, 1080.0]).is_none());
         }
-        assert!(c.project([0.0, 0.0, 5.0], [1080.0, 1920.0]).is_none());
+        assert_eq!(
+            c.project([0.0, 0.0, 5.0], [1080.0, 1920.0]),
+            Some([540.0, 960.0])
+        );
         let mut c = c;
         c.up = c.right;
         assert!(c.project([0.0, 0.0, 5.0], [1920.0, 1080.0]).is_none());
+    }
+    #[test]
+    fn projection_centers_pillarboxed_view_without_stretching() {
+        let c = camera();
+        let point = [1.0, 1.0, 5.0];
+        let normal = c.project(point, [2560.0, 1440.0]).unwrap();
+        let wide = c.project(point, [5120.0, 1440.0]).unwrap();
+        assert!((wide[0] - normal[0] - 1280.0).abs() < 0.001);
+        assert_eq!(wide[1], normal[1]);
+        assert_eq!(
+            c.project([0.0, 0.0, 5.0], [5120.0, 1440.0]),
+            Some([2560.0, 720.0])
+        );
+        let mut native_wide = c;
+        native_wide.aspect = 32.0 / 9.0;
+        let native = native_wide.project(point, [5120.0, 1440.0]).unwrap();
+        assert!((native[0] - wide[0]).abs() < 0.001);
+        assert_eq!(native[1], wide[1]);
+        assert!(c.project([100.0, 0.0, 5.0], [5120.0, 1440.0]).is_none());
+    }
+    #[test]
+    fn projection_reports_why_placement_failed() {
+        let c = camera();
+        assert_eq!(
+            c.project_checked([0.0, 0.0, 5.0], [0.0, 1440.0]),
+            Err("projection_invalid_input")
+        );
+        assert_eq!(
+            c.project_checked([0.0, 0.0, -5.0], [5120.0, 1440.0]),
+            Err("projection_depth_rejected")
+        );
+        assert_eq!(
+            c.project_checked([100.0, 0.0, 5.0], [5120.0, 1440.0]),
+            Err("projection_anchor_offscreen")
+        );
+    }
+    #[test]
+    fn projection_fits_standard_tall_small_and_resized_surfaces() {
+        let c = camera();
+        for display in [
+            [5120.0, 1440.0],
+            [3440.0, 1440.0],
+            [1920.0, 1080.0],
+            [1920.0, 1200.0],
+            [1024.0, 768.0],
+            [1080.0, 1920.0],
+            [640.0, 360.0],
+            [320.0, 240.0],
+        ] {
+            assert_eq!(
+                c.project([0.0, 0.0, 5.0], display),
+                Some([display[0] / 2.0, display[1] / 2.0])
+            );
+            let p = c.project([1.0, 1.0, 5.0], display).unwrap();
+            // Equal world-space offsets retain equal pixel scale on both axes.
+            assert!(((p[0] - display[0] / 2.0) - (display[1] / 2.0 - p[1])).abs() < 0.001);
+            assert!(p[0] > 0.0 && p[0] < display[0] && p[1] > 0.0 && p[1] < display[1]);
+        }
     }
     #[test]
     fn preview_never_uses_unknown_animation_or_out_of_range_or_away_facing_target() {
@@ -806,12 +1006,32 @@ mod tests {
         assert!(state.current(Duration::from_millis(86)).is_none());
     }
 
+    #[test]
+    fn sequence_alone_cannot_keep_a_frozen_clock_actionable() {
+        let mut state = LiveCue::default();
+        let mut sample = target();
+        state.push(Duration::ZERO, Ok(Some(sample.clone())));
+        sample.animation.sequence += 1;
+        state.push(Duration::from_millis(40), Ok(Some(sample)));
+        assert!(!state.advancing(Duration::from_millis(50)));
+    }
+
+    #[test]
+    fn original_capture_age_is_not_rebased_by_a_later_poll() {
+        let mut state = LiveCue::default();
+        let mut sample = target();
+        sample.captured_at = Some(Duration::ZERO);
+        state.push(Duration::from_millis(49), Ok(Some(sample)));
+        assert!(state.current(Duration::from_millis(98)).is_none());
+    }
+
     #[derive(Default)]
     struct Fixture {
         data: BTreeMap<usize, u8>,
         calls: Cell<usize>,
         change_head: bool,
         change_owner: bool,
+        change_npc: Cell<bool>,
     }
     impl Fixture {
         fn put(&mut self, at: usize, value: &[u8]) {
@@ -909,6 +1129,11 @@ mod tests {
     impl Memory for Fixture {
         fn read(&self, at: usize, output: &mut [u8]) -> Result<(), ReadError> {
             self.calls.set(self.calls.get() + 1);
+            if at == 0x150000 + 0x628 && self.change_npc.get() {
+                self.change_npc.set(false);
+                output.copy_from_slice(&10100200_i32.to_le_bytes());
+                return Ok(());
+            }
             if self.change_owner && at == 0x140000000 + 0x3d7a1e0 && self.calls.get() > 1 {
                 output.copy_from_slice(&0x21000u64.to_le_bytes());
                 return Ok(());
@@ -925,6 +1150,49 @@ mod tests {
             }
             Ok(())
         }
+    }
+    #[test]
+    fn npc_identity_requires_matching_model_stable_owner_and_mapped_parameter() {
+        let mut f = Fixture::target_layout();
+        // Optional failures retain the all-variants lookup, not a guessed form.
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            None
+        );
+        f.ptr(0xa0000 + 0x30, 0x150000);
+        f.int(0x150000 + 0x628, 10100200);
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            Some(10100200)
+        );
+        f.int(0x150000 + 0x628, 15500000);
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            None
+        );
+        f.int(0x150000 + 0x628, -1);
+        assert_eq!(
+            observe(&f, 0x140000000, RESEARCH_HASH)
+                .unwrap()
+                .unwrap()
+                .npc_param,
+            None
+        );
+        f.int(0x150000 + 0x628, 10100000);
+        f.change_npc.set(true);
+        assert!(matches!(
+            observe(&f, 0x140000000, RESEARCH_HASH),
+            Err(ReadError::ChangedDuringRead)
+        ));
     }
     #[test]
     fn latest_ring_entry_wraps_and_rejects_changes_and_unreadable_frames() {
@@ -984,14 +1252,17 @@ mod tests {
             ring_frame(&mut f, begin as usize, 100003005, 0.45);
             ring_frame(&mut f, ((head + 9) % 10) as usize, 40000, 2.7);
             assert_eq!(animation(&f, 0x20000).unwrap().id, 40000);
-            let selected = animation_for_model(&f, 0x20000, 5020).unwrap();
+            let selected = animation_for_model(&f, 0x20000, 5020, None).unwrap();
             assert_eq!(selected.id, 100003005);
             assert_eq!(selected.time, 0.45);
             // The previous attack remains in the ring but is outside this batch.
             f.int(0x200ec, (head + 9) % 10);
-            assert_eq!(animation_for_model(&f, 0x20000, 5020).unwrap().id, 40000);
+            assert_eq!(
+                animation_for_model(&f, 0x20000, 5020, None).unwrap().id,
+                40000
+            );
             f.int(0x200ec, head);
-            assert_eq!(animation_for_model(&f, 0x20000, 5020).unwrap().id, -1);
+            assert_eq!(animation_for_model(&f, 0x20000, 5020, None).unwrap().id, -1);
         }
     }
     #[test]
@@ -1002,28 +1273,49 @@ mod tests {
         ring_frame(&mut f, 0, 100003005, 0.45);
         ring_frame(&mut f, 1, 100003000, 0.45);
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::InvalidAnimation)
         );
         ring_frame(&mut f, 1, 40000, 2.7);
         f.data.remove(&0x20022);
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::Unreadable)
         );
         ring_frame(&mut f, 0, 100003005, 0.45);
         f.calls.set(0);
         f.change_head = true;
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::ChangedDuringRead)
         );
         f.change_head = false;
         f.int(0x200ec, 10);
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::InvalidAnimation)
         );
+    }
+
+    #[test]
+    fn polling_batch_prefers_incoming_attack_over_legacy_only_object_contact() {
+        let mut f = Fixture::default();
+        f.int(0x200e8, 2);
+        f.int(0x200ec, 0);
+        ring_frame(&mut f, 0, 5010, 0.1);
+        ring_frame(&mut f, 1, 3000, 0.5);
+
+        assert_eq!(
+            animation_for_model(&f, 0x20000, 5080, None).unwrap().id,
+            3000
+        );
+    }
+    #[test]
+    fn missing_projection_does_not_invalidate_fixed_hud_timing() {
+        let mut f = Fixture::target_layout();
+        f.data.remove(&(0x140000000 + 0x3d5c0a0));
+        let observed = observe(&f, 0x140000000, RESEARCH_HASH);
+        assert!(observed.is_ok_and(|t| t.is_some()));
     }
     #[test]
     fn unsupported_build_performs_no_game_reads() {
@@ -1146,6 +1438,13 @@ mod tests {
                 let neutral = result.unwrap().unwrap();
                 assert!(neutral.animation_error.is_some());
                 assert!(!estimated_press(&neutral));
+            } else if *at >= 0x120000 && *at < 0x150000
+                || (0x140000000 + 0x3d5c0a0..0x140000000 + 0x3d5c0a8).contains(at)
+            {
+                assert!(
+                    result.is_ok_and(|t| t.is_some_and(|t| t.camera.is_none())),
+                    "optional camera byte {at:x}"
+                );
             } else {
                 assert!(result.is_err(), "missing {at:x}");
             }

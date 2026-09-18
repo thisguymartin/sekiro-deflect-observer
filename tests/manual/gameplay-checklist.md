@@ -1,6 +1,10 @@
 # Gameplay test checklist
 
-Run these cases with the [prototype testing guide](../../docs/testing.md). Record results in a [session report](../compatibility/session-template.md).
+For the current native cue use [Windows instructions](../../docs/windows.md) and
+[the defensive cue trial record](../compatibility/cue-trial-template.md).
+The older effect research cases below remain separate from gameplay-cue timing.
+Use the [prototype testing guide](../../docs/testing.md) only for that historical
+research path; its candidate state is not a successful-deflect result.
 
 Each expected result is a requirement or a research question, not a claim about the existing prototype. Mark unavailable native-only controls `Not applicable` during prototype research. They remain required for the native release.
 
@@ -56,3 +60,27 @@ Use synthetic readers and fixture executable identities for [failure tests](../R
 | F05 | Active, then unknown, then active, then inactive | Keep the gap and incomplete intervals. Do not count a single complete window across unknown data. |
 
 Passing synthetic cases does not establish that the real-game offsets or effect semantics are correct.
+
+## Native defensive cue acceptance (0.8.0-preview)
+
+All rows below are **manual requirements, currently unvalidated in gameplay**.
+Run ordinary soldier baseline first, then Ogre's auxiliary-track case, then Ape
+responses and representative multi-hit boss combos. Do not skip to global boss claims.
+
+| Requirement | Action | Evidence required |
+| --- | --- | --- |
+| T1 | Reproduce a cue arriving early/late for one exact phase; compare corrected source-age/projection logs | DLL/game/data hashes, animation/phase, sample age, draw and visible times plus independent input/contact/outcome |
+| T2 | Observe READY, each supported action, expiry; change measured latency by a known positive amount | Earlier interval with unchanged width; preparation not confused with action; no unmeasured preferred-time claim |
+| T3 | Repeat same animation and every combo hit; interrupt/slow/pause and produce a frame stall | One calibrated pulse per hit, none after expiry or a wholly skipped interval; next-hit READY not blocked by recovery |
+| R1 | Test grabs/sweeps/mixed projectiles/unknown routing and disabled responses | Conservative exclusions; no inferred Mikiri or offensive punish; form/capability evidence recorded |
+| H1 | Jump/crouch/move camera beside a large boss; resize and change UI scale/window mode | Fixed HUD remains above actual player posture bar; entire label/lane/glow gap in screenshots at each claimed layout |
+| H2 | Unlock, switch targets, kill target/player, load/menu/save-reload, regain lock | Read loss clears in that decision; record read-completion-to-hidden-submission and visible hide delays; no old target cue/pulse |
+| C1 | First launch, full restart; edit config, invalid/NaN/color/profile reload; F6/F7/F8/F9/F10 | Whole last valid config survives errors, settings persist, reset works, no correctness gate can be disabled |
+| V1 | Compare offline shared-renderer images to the candidate's labels/shapes/bounds | Images explicitly synthetic, hashes linked, actual game images stored separately |
+| V2 | Soldier then Ogre then Ape then combos, successful and failed manual attempts | Complete per-move trial table with sample sizes, uncertainty, distance/angle/FPS/modifiers and logs/video |
+| D1/D2 | Recompute inventory; update local status after the trial | Exact model/phase/source coverage, honest form status, commands/results/working-tree state and next actions |
+
+Menu/playability state and actual contact/outcome observations are currently
+missing read-only sources. Clock-stop suppression is not proof of complete menu
+coverage. Keep H2/V2 open until the above transitions are measured. Never automate
+combat input or patch live state to manufacture a failure case.

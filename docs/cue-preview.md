@@ -1,176 +1,97 @@
-# Incoming response cue 0.6.3-preview
+# HUD behavior (0.12.4-preview)
 
-The slider follows Wolf's position and uses the locked enemy's current animation
-to anticipate selected attacks. It never presses buttons or starts a timer from
-guard input. Timing is estimated from attack activation, not confirmed contact.
+The top-center rail shows the locked enemy's incoming attack phase. The
+upper-right crescent shows enemy-speed practice status. They communicate
+separate things: a PARRY cue can remain visible when practice is waiting or
+needs attention.
 
-## Display and controls
+![Live PARRY 70% rail and jade practice moon above Wolf](images/gameplay-2026-09-18-hero.jpg)
 
-At the 1080p reference scale the timing lane is 360 x 12 pixels. Decorative
-translucent ribbon wings extend its total width to 424 pixels. A larger ivory
-diamond, soft glow, 58-pixel vertical needle and small moving magenta pointer
-follow the supplied video's thumbnail. The pointer identifies the cursor; the
-colored zone and English label specify the response. Unknown or out-of-reach
-phases use a gray pointer. The colored segment's tapered ends stay within its
-timing boundaries, and the diamond's center marks the current animation time.
-The 26-pixel action label uses a dark outline above the pointer, without a boxed
-backing. READY gives a legible lead-in before PARRY. The label stays centered above
-the track. Label visibility is not prolonged past the estimated interval.
+*Actual gameplay at 00:38.500 in the September 18 recording.
+[See the animated sequence, other states and capture details](screenshots.md).*
 
-| Color / text | Meaning |
+## Read the attack rail
+
+The default rail is 480 × 18 reference pixels at `(0.5, 0.16)` of the playable
+viewport, configured below the enemy's top posture bar. It scales with the
+viewport; this is fixed placement, not automatic detection of the game's UI.
+
+During a parryable wind-up, the rail is green and the diamond approaches the
+center gate. A white segment and red strike emblem mark the active parryable
+phase. They do not identify exact weapon contact or confirm a successful
+deflect. Default incoming mode does not require the enemy to be within reach.
+
+| Caption | Meaning |
 | --- | --- |
-| Green PARRY | Selected melee phase; 150 ms of animation time before activation |
-| Orange DODGE | Mapped grab; separate 300 ms advance estimate |
-| Blue JUMP | Mapped low sweep; separate 300 ms advance estimate |
-| Gray TIMING UNVERIFIED / SPECIAL UNVERIFIED | No confident response/timing guidance |
-| LOCKED | Fresh target, no active timing cue |
+| PARRY | The classified phase permits deflection. |
+| DODGE | The classified phase is a grab; no safe dodge direction is predicted. |
+| JUMP | The classified phase is a low sweep. |
+| MIKIRI | The classified thrust has an explicit supported counter route. |
+| NO PARRY | Deflection is disabled; no specific alternative is established. |
+| UNKNOWN | The attack is known but its response is unresolved. |
+| LOCKED | The target is fresh but no current attack phase is available. |
+| PRACTICE | Practice is armed and waiting for an eligible phase. |
+| PARRY 70% / PRACTICE 70% | The controller reports an applied speed for this target; the second caption is used when the rail is neutral, such as with hints disabled. |
 
-The timer zooms to the final 0.65 seconds of wind-up and up to 0.25 seconds of
-recovery. Earlier wind-up holds the diamond at the left. Animation playback
-speed affects elapsed real time. These estimates do not change any game window.
-DODGE does not predict a safe direction or establish invulnerability timing.
+The percentage follows the configured speed; 70% is the example visible in the
+new video. DODGE, JUMP, MIKIRI, NO PARRY and UNKNOWN retain their own colors and
+labels. The clip illustrates PARRY, rather than demonstrating every response.
 
-Version 0.6.3 changes appearance only. A longer visual warning could give more
-preparation time, but widening the displayed green interval would not widen the
-game's real acceptance window. Changing that window requires a separate gameplay
-modification; this observer remains read-only. See [visual validation](validation-0.6.3.md).
+Mikiri hints assume the skill is unlocked. Set `mikiri = false` to show PARRY
+for supported deflectable thrusts instead. Set `reduced_flash = true` to keep
+the response color and suppress the white/red transition.
 
-F6 lowers the track; F7 raises it by 8 reference pixels per fresh press, bounded
-to +/-160 pixels. Adjustment resets when the DLL restarts. F8 toggles visibility;
-F9 toggles diagnostics. All controls pass through to the game.
+## Read the practice moon
 
-The default anchor is now player root +1.55 vertical world units, lowered from
-2.15 after reviewing recording 02. It follows the player, not the enemy. This
-is still a standing approximation: animated head-bone tracking is not implemented.
-New alignment, crouches, jumps and acrobatics need gameplay verification.
+**F11** toggles practice for this process. **Shift+F11** switches and saves
+**80% → 90% → 70% → 80%** without changing whether practice is armed.
+Practice starts off after a restart.
 
-## Extracted coverage
+| Appearance | Meaning |
+| --- | --- |
+| Gray OFF + percentage | Disabled; the percentage is the selected speed. |
+| Gold ON + percentage | Armed and waiting. |
+| Jade ON + percentage | Applied override on a fresh matching target. |
+| Amber ON + percentage and ! | Unavailable, paused, unsupported or pending cleanup; F9 gives details. |
 
-All 79 base c1000-c7999 animation archives in the local inventory were re-read
-with additional event fields. The current table has 2,161 phases across 54 models,
-450 green estimates across 39 models, 39 dodge phases and 58 jump phases.
-There are 1,830 animations with special/projectile event indicators; many have
-no timed response. These are data counts, not verified enemy or move counts.
+The 90% moon is thin, 80% is wider and 70% is fullest. The moon remains visible
+without a lock and while practice is off, independently of attack hints and
+rail offsets. It follows the playable viewport and HUD scale/opacity.
+**F8 hides the HUD and disarms practice**; focus loss hides the HUD temporarily.
+See [practice behavior](enemy-speed-practice.md) for eligibility and cleanup.
 
-| Model | Phases | Green estimates | Dodge phases | Jump phases |
-| --- | ---: | ---: | ---: | ---: |
-| Chained Ogre c5020 | 26 | 6 | 5 | 0 |
-| Guardian Ape c5100 | 93 | 4 | 1 | 4 |
+## Other modes and design references
 
-Animation variants can duplicate a move. Some Ogre grabs and Ape low sword sweeps
-are mapped; other attacks and forms remain unverified. No claim covers every
-enemy, miniboss or boss. See [per-model data](enemy-coverage.json) and
-[response mappings with parameter IDs and source hashes](response-coverage.json).
+Set `incoming_cues = false` only to use the separate legacy estimated timing
+mode, which adds READY, PARRY NOW, WATCH and EXPIRED states. See
+[legacy timing](parry-cue.md) and [configuration](configuration.md).
 
-Green coverage deliberately decreases from 819 phases in 0.5.0: overlapping
-hitboxes are merged and stricter attack-parameter/event checks reject questionable
-prompts. Separate combo activations are retained. The next phase's advance cue
-can replace the previous phase's recovery display, avoiding a missed quick cue.
+The editable [strike emblem](../assets/ui/strike-emblem.svg) uses the same vector
+geometry as the live HUD. The observer loads no texture for it.
 
-Shared full animation imports use their referenced timeline. Identical duplicate
-definitions are coalesced; conflicting definitions and cyclic/missing references
-are excluded. The table includes 54 imported phases, of which 3 with local events
-remain uncertain; 3 import entries cannot resolve. Similar-looking model IDs do
-not inherit another model's timings. No manual per-move timing measurements are
-required to generate these data.
+<details>
+<summary>Synthetic reference: all three moon presets</summary>
 
-## Response inference and exclusions
+![Enlarged synthetic moon states for 0.12.4](images/0.12.4-practice-moon.png)
 
-The extractor now reads TAE attack type / behavior judge IDs, throw behavior,
-action flags and aim type. Local game parameters supply 2,396 AtkParam_Npc rows
-and 3,128 BehaviorParam rows. NpcParam and ThrowParam are also extracted for
-research; they are not complete runtime response selectors.
+This is a renderer-generated comparison, not a gameplay screenshot. Older
+designs are in the [historical visual archive](screenshots.md#historical-synthetic-previews).
 
-The offline join uses NPC melee BehaviorParam entries grouped by model/variation
-and judge ID. Every matching melee variation must reference an existing attack
-whose reference name identifies that model, and variants must agree on response.
-Nonstandard attack-type routing stays unverified. Actual runtime variation
-selection has not been independently established.
+</details>
 
-An incoming throw flag maps to DODGE; grab-damage stages do not. JUMP requires
-both deflection-disable flags plus an explicit low-sweep description in the
-reference names. Ape attack rows 51000541 and 51000560 are explicit low-sweep
-interpretations of the translated names. This is a source-based inference,
-not a complete or gameplay-proven response classifier. Aim type 7 alone is not
-enough to infer JUMP. Other nondeflectable or ambiguous attacks stay unverified.
+## Reproduce a synthetic render
 
-Green additionally excludes projectile/mixed animations, throw/action/aim
-indicators, common-behavior or effect-add events, uncertain imports, nonstandard
-attack routing, lead-ins under 0.1 seconds and continuous hitboxes over 0.4
-seconds. Attack names and parameters do not independently prove that a hit will
-reach Wolf or that pressing within the displayed interval succeeds.
-
-Primary format references:
-
-- [DSAnimStudio Sekiro TAE template](https://github.com/Meowmaritus/DSAnimStudio/blob/master/DSAnimStudioNETCore/Res/TAE.Template.SDT.xml)
-- [Paramdex attack definition](https://github.com/soulsmods/Paramdex/blob/master/SDT/Defs/AtkParam.xml) and [behavior definition](https://github.com/soulsmods/Paramdex/blob/master/SDT/Defs/BehaviorParam.xml)
-- [Paramdex attack names](https://github.com/soulsmods/Paramdex/blob/master/SDT/Names/AtkParam_Npc.txt)
-- [SoulsFormats PARAM reader](https://github.com/JKAnderson/SoulsFormats/blob/master/SoulsFormats/Formats/PARAM/PARAM/PARAM.cs)
-
-## Detection and diagnostics
-
-The ten-entry animation history ring retains its 0x14 stride. The 0.6.0 live
-Ogre trial exposed concurrent tracks: auxiliary animation 40000 was usually
-last, hiding its attacks. Version 0.6.1 reads only the engine's current batch
-from module +0xec (batch start) to +0xe8 (next write), with wrap handling. It
-selects a mapped attack/special track even when an auxiliary track follows.
-Competing mapped tracks are ambiguous and suppress timing. Bytes and boundaries
-are rechecked; empty batches stay neutral. No attack is recovered from an older
-batch. Loaded code at 0xb5bef0 and 0xb5c730 plus live Ogre ring snapshots support
-the boundaries; runtime blend weighting still needs validation.
-A fresh valid lock remains neutral while idle or when only the animation read
-fails. Failed animations are not reused. Changed observations get one retry
-within the existing read budget; ownership is rechecked. Stale observations
-still expire at 50 ms. Lost lock, dead actors and invalid dependent reads hide
-the bar. The bucket bound now follows the handle's 14-bit index instead of an
-arbitrary 256-entry cap; this was not confirmed as the historical dropout cause.
-
-The render callback takes a short snapshot lock, then draws without holding it.
-New cue CSV fields distinguish lock-disabled, selected-point, ownership,
-animation, camera and other stages. A separate bounded nonblocking queue records
-render callback decisions in observer-PID.render.csv. F9 shows live version,
-read status, log availability and dropped render-record count.
-
-Logs live in %LOCALAPPDATA%\SekiroDeflectObserver; each CSV stops at 16 MiB.
-The cue/render headers record version and epoch for recording alignment.
-estimated_press=true in cue.csv is a calculation only. press_submitted or
-response_submitted in render.csv records an ImGui draw submission, not proof
-of presentation, contact or successful input. Video and input evidence remain
-necessary. The samples.csv candidate-effect reader is a separate research aid.
-
-## Remaining validation
-
-Recording 02 shows the old bar rendering in soldier combat, high above Wolf,
-with a brief PARRY before visible sparks around 21 seconds. It does not prove
-exact contact timing or a successful manual deflect. Recordings 03/04 show the
-0.6.0 bar closer to Wolf, but also confirm the Ogre's neutral-only failure.
-The 0.6.1 batch-reader correction has regression checks; its actual response
-timing still needs a new gameplay trial after restart.
-See [the current evidence and outstanding trials](validation-0.6.md).
-
-Reach uses distance, approximate body bounds, height and facing, not weapon
-collision geometry. Blends, delayed strikes, projectile timing, unusually large
-attacks and runtime behavior selection remain limitations. Lock-on is required.
-Normal camera aspect must match the display and be 16:9 or wider; debug cameras
-and invalid/offscreen projections suppress the bar.
-
-## Reproduce data and visual checks
-
-From the project root, after obtaining the documented public references:
+Run these from Developer PowerShell to render the current implementation:
 
 ```powershell
-python scripts/inspect-game-archives.py 'C:\Program Files (x86)\Steam\steamapps\common\Sekiro' --all-enemies --output-directory dist/game-analysis-v2
-python scripts/inspect-attack-params.py 'C:\Program Files (x86)\Steam\steamapps\common\Sekiro'
-python scripts/generate-attack-timings.py
-python scripts/test-attack-timings.py
-cargo fmt --all
-cargo test --locked --offline --target x86_64-pc-windows-msvc
-cargo run --locked --offline --example cue-layout --target x86_64-pc-windows-msvc
-python scripts/render-cue-layout.py
+cargo run --locked --offline --example cue-layout --target x86_64-pc-windows-msvc -- dist/review-0.12.4/layout/practice --incoming-gallery --practice --speed 0.7
+cargo run --locked --offline --example cue-layout --target x86_64-pc-windows-msvc -- dist/review-0.12.4/layout/no-hints --state incoming-parry --practice --no-hints --speed 0.7
+python scripts/render-cue-layout.py dist/review-0.12.4/layout/practice
+python scripts/render-cue-layout.py dist/review-0.12.4/layout/no-hints
 ```
 
-The last command uses the Pillow already installed under dist/video-tools.
-The layout output is synthetic, not gameplay. Runtime packages require neither
-Python nor extracted archives. Public references and local game data remain in
-ignored dist folders; source hashes and derived coverage are recorded in docs.
-
+These previews check drawing and layout bounds. The
+[gameplay images](screenshots.md) show the HUD in the recorded encounter.
+Measured slowdown, contact/input timing and lifecycle checks are tracked in
+[current validation](validation-0.12.4.md) and the
+[gameplay checklist](../tests/manual/gameplay-checklist.md).

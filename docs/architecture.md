@@ -1,55 +1,143 @@
-# Windows candidate-effect diagnostics
+# Native observer architecture (0.12.4-preview)
 
-The DLL observes candidate effect 105010. Its meaning as a deflect window and live layout validity remain unverified. See [reader research](reader-research.md) for provenance, constraints, logging, and gameplay trials.
+The DX11 backend is the pinned hudhook 0.9.2 source under `vendor/hudhook` with
+the patch documented in `OBSERVER-PATCH.md`. HUD commands are recorded on a
+private deferred context and submitted with `ExecuteCommandList(..., TRUE)`;
+the D3D runtime restores host context state. Empty draw data does no GPU work.
+Partial command lists are discarded on error. Texture updates touch only
+renderer-owned resources. The old incomplete manual state backup is removed.
+See `tests/dx11-render-isolation.rs` and [current validation](validation-0.12.4.md).
 
-The 0.4.0 preview adds locked-enemy and animation-history reads, normal camera
-projection, and a small overhead ring with an activation-based green estimate.
-See [the preview calculation and limits](cue-preview.md). The text panel
-described below remains optional research diagnostics and is hidden by default.
-Exact player contact prediction and gameplay verification remain.
+The default alert path is `Engine::incoming` -> `src/incoming.rs` ->
+`src/attack.rs`, using `src/incoming_attacks.rs` and the exact evidence in
+`docs/incoming-coverage.json`. Raw attack classification does not accept display
+preferences. Alert filtering and Mikiri-to-PARRY fallback stay in `incoming.rs`.
+It identifies the current/next attack phase and response without reach gating,
+rate extrapolation, calibrated contact or press windows. Wind-up/active are
+separate from actionable timing. `incoming_cues = false` selects the preceding
+timing engine described below. See [incoming responses](incoming-attacks.md).
+
+The project is a Rust Windows x64 DLL that reads game observations and submits
+a DX11 HUD through hudhook. Optional F11 practice starts off and temporarily
+writes eligible enemy animation speed. Its controller and private native writer
+are separate from alert presentation. It does not generate input, alter Wolf's
+speed or deflect windows, edit game/save files or use a network service.
+See [feature boundaries](feature-boundaries.md) and
+[practice behavior and limitations](enemy-speed-practice.md).
 
 ```text
-me3 profile -> Windows x64 DLL
-  -> minimal DLL entry point -> initialization thread
-  -> host check and executable hash -> local diagnostic log
-  -> hash-gated diagnostic worker -> bounded traversal -> sample history and CSV
-  -> bounded target/camera reads -> activation estimate and frozen-clock checks
-  -> hudhook DirectX 11 render hook -> overhead ring; optional candidate panel
+DLL initialization -> host + executable/DLL hashes -> hooks + worker
+locked target -> current animation batch -> validated capture timestamp
+  -> raw attack kind / hit phase -> alert filtering -> shared ImGui renderer
+  -> fresh advancing target -> practice policy -> owned speed write / restore
+practice applied status -> renderer caption (independent of alert preferences)
+worker config reload / atomic save -> bounded settings snapshot
+research candidate effects -> separate F9 panel and bounded local CSVs
 ```
 
-## Boundaries
+## Ownership and lifecycle
 
-`src/identity.rs` validates the host filename and hashes a stream. `src/reader.rs` gates reads on an exact research hash, reacquires the local player, and performs two bounded effect-list traversals with ownership checks. `src/windows/diagnostics.rs` implements ReadProcessMemory, polling, and capped CSV logging. A matching hash does not prove layout correctness.
+`src/cue.rs` reacquires player, lock manager/selected point, actor and modules,
+checks health and ownership, selects only the current ring batch and validates
+coarse reach/facing. The Ogre auxiliary track can no longer hide a mapped attack;
+competing mapped tracks remain ambiguous and no older ring entry is revived.
+Camera reads are independently optional for screen-space placement. Overhead
+projection still validates its camera and rejects invalid/offscreen geometry.
+The known debug-camera flag suppresses the gameplay observation.
 
-`src/cue.rs` implements target/camera reads, latest animation-history selection,
-projection, approximate distance/facing filters, and 50 ms sample/clock freshness.
-`src/attack_timings.rs` is generated from local TAE JSON and contains a narrow
-soldier/general preview table. Hitbox activation is not treated as proven contact.
+`src/event_hook.rs` observes completed batches before their boundary reset. Its
+existing native detour preserves the engine call/return. It is gated by both the
+executable and researched function bytes. Snapshots retain their original
+monotonic capture time, owner/player identity and generation. Changing owners or
+losing lock clears captures. Failed/stale captures never silently become polling
+samples while the event hook is active. Without the hook, bounded polling remains
+available. Neither path is contact or outcome observation.
 
-`src/input.rs` recognizes fresh F8/F9 key-down messages and excludes auto-repeat. It contains no global keyboard hook or synthetic input.
+`src/timing.rs` owns portable occurrence, rate, phase, interval and pulse decisions.
+Worker observations feed it on the existing 8 ms poll cadence; rendering asks for
+a decision at its actual monotonic timestamp. Rate stability, 25 ms extrapolation
+and the unchanged 50 ms freshness ceiling bound the model. See
+[the equations and limitations](parry-cue.md). A raw sequence is retained for
+research but does not define an occurrence or progression.
 
-`src/windows.rs` owns DLL startup, local logs, render-hook installation, the panel, and the visibility flag. Its window-message handler forwards messages to the game. The panel accepts no mouse or keyboard interaction.
+`LiveCue::current_lock` checks only the validated lock read's 50 ms age;
+`LiveCue::current` also checks original animation-capture age. The renderer may
+retain neutral LOCKED from the former while the timing engine requires the
+latter. Animation failure clears press/pulse state without discarding a fresh
+lock. Full clear, lock loss, focus/visibility and generation gates still hide it.
 
-The DLL entry point schedules initialization and returns. File access, hashing, logging, and renderer setup occur on the initialization thread. The draw callback performs no file access or hashing.
+The worker reads and publishes before configuration or diagnostic file work.
+`src/lifecycle.rs` advances an atomic invalidation generation as soon as loss,
+owner/animation change or animation failure is observed, even before the worker
+can acquire the cue mutex. F8 hiding advances it immediately, including hide/show
+pairs between renders. The renderer holds the short cue-state mutex through
+its decision and checks the generation again immediately before draw commands.
+No memory traversal or file I/O runs under that draw lock. Already submitted
+commands cannot be revoked; visible presentation delay still needs measurement.
+Target switching/errors, F8 hiding, lost focus and unsupported geometry clear
+pending timing. Dropped settings commands are counted visibly in F9.
 
-## State and lifecycle
+## Configuration and rendering
 
-The panel shows candidate presence, absence, or UNKNOWN. `src/samples.rs` handles freshness, transition history, ordering, and gaps. Errors immediately replace known state; observations expire 100 ms after read start. Input never substitutes for candidate observations. The render callback copies a short snapshot under a mutex, with memory reads and sample logging owned by the worker.
+`src/config.rs` parses bounded TOML with whole-file validation and a 64 KiB limit.
+The initialization/worker path creates defaults, checks reloads once per second
+and performs atomic same-directory saves. Malformed reloads keep the entire last
+valid configuration. Hotkeys enqueue changes; the render callback never parses,
+hashes or accesses files. `src/windows/diagnostics.rs` publishes config/timing
+under one mutex. Profile metadata is validated against exact game and data
+identity. Named forms remain inactive without a runtime form discriminator.
 
-F8 hides drawing without unloading the DLL. The proof of concept stays loaded until the game exits. There is no eject hotkey or claim of safe unloading during play. Installation lives in a separate directory referenced by a me3 profile.
+`src/layout.rs` computes full cue bounds, a fitted playable viewport, safe margins
+and a reserved posture band. The default is configured normalized placement,
+not posture detection. `src/windows/cue_draw.rs` is shared with the separate
+`examples/cue-layout.rs` synthetic mesh exporter. Label, shape and response color
+communicate state; glow/pulse geometry stays inside the full bounds. The offline
+example is never used as an unlocked gameplay fallback.
 
-Startup logs include the build version and executable hash under `%LOCALAPPDATA%\SekiroDeflectObserver`. Sample CSV files contain read timestamps, candidate state, errors, player addresses and effect IDs; they are capped at 16 MiB per process. Older runs are retained. The observer has no network client or updater. me3 is installed separately and has its own behavior.
+`src/input.rs` accepts fresh focused F6..F11 key-down events; every event continues
+to the game. No combat input capture, keyboard hook or synthetic input is added.
+F9 is independent of target validity and cannot bypass gameplay lock-on gating.
+F11 arms practice for the current process only. F8 hiding disarms practice;
+showing the HUD again does not rearm it. Shift+F11 cycles and saves 80%, 90% and
+70% speed without changing arming. The corner moon reports OFF/ON, the selected
+percentage and controller status independently of the attack rail.
+Alert response toggles and HUD mode do
+not enable or disable slowdown. The worker runs the speed controller outside
+the render mutex; no speed writes run in the DX11 or animation-hook callbacks.
 
-## Design decision
+## Local evidence
 
-A DLL loaded by me3 keeps the user workflow to one launch profile. A separate injector would duplicate loader responsibilities and add another executable to distribute. A simulated deflect display would not establish native integration, so it is not part of this milestone.
+Startup logs record the package version, actual loaded DLL file hash and executable
+hash. Cue CSVs record read start/end, owner, animation and reader stage. Render
+CSVs record the same epoch, data identity, sampled/projected animation clocks,
+source/read age, observation and original-capture IDs, source kind, owner/validity
+generations, occurrence/phase, contact proxy/profile, press interval, preferred
+instant, state, pulse, HUD mode, surface and viewport. Render rows retain profile
+evidence/scope/trial totals and invalidation-to-hidden-submission timestamps.
+Those delay fields enable a new trial; they are not a measured live result. Display mode is explicitly
+unobserved and must be filled from the trial record; surface size alone cannot
+identify exclusive fullscreen versus borderless. Presentation, actual input,
+contact and successful-deflect fields remain `unobserved`.
 
-The portable reader and bounded transition history are tested with synthetic data. Complete-window metrics are deferred until real observations support the effect's meaning. Their target failure semantics remain in [the testing requirements](../tests/README.md). Repeated traversal cannot create an atomic engine snapshot or fully eliminate pointer reuse races.
+Each CSV stops at 16 MiB; a bounded 512-entry nonblocking queue carries render
+records. F9 shows logging status and dropped records. `diagnostic_logging=false`
+skips general diagnostic data rows. The separate bounded practice-write audit
+remains enabled and records applied/original speed and controller transitions.
+Sparse alerts also record practice status. File/log failures never authorize guidance. The separate
+`reader.rs`/`samples.rs` candidate-effect history retains its own semantics and
+freshness; effect 105010 is not proof of successful deflection.
 
-## Sources and verification limits
+## API evidence
 
-The implementation uses the downloaded hudhook 0.9.2 crate and its DirectX 11 API, rather than the older version numbers in some tutorial examples. See [hudhook](https://github.com/veeenu/hudhook) and [me3 native-DLL profiles](https://github.com/garyttierney/me3/blob/main/docs/configuration-reference.md).
+Dependency APIs were checked against locked upstream source and documentation for
+serde 1.0.195, toml 0.8.8, and imgui 0.12.
+Win32 contracts were checked against official Microsoft documentation for
+[GetModuleFileNameW](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew),
+[GetWindowThreadProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowthreadprocessid)
+and [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw).
 
-Portable tests validate host checks, hashing, and input-event interpretation. Windows compilation validates the Windows API bindings and DLL link. A Windows load check verifies DLL startup and refusal to install hooks in PowerShell. These checks do not prove correct rendering inside Sekiro. Record that separately using [the Windows checklist](windows.md#test-the-first-launch).
-
-Dependencies and the Rust toolchain are pinned. Byte-identical rebuilds across machines and ZIP timestamps have not been established. A clean build is not a claim of binary reproducibility.
+Automated checks and generated renderer images are synthetic evidence. The
+[September 18 recording](screenshots.md) additionally shows the live HUD and
+70% practice states. Measured timing, menu/loading lifecycle, spacing across
+display setups and accepted defensive outcomes still require the
+[gameplay checklist](../tests/manual/gameplay-checklist.md).

@@ -1,10 +1,10 @@
 [package]
 name = "sekiro-deflect-observer"
-version = "0.6.3-preview"
+version = "0.12.4-preview"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT"
-description = "Experimental Sekiro overhead attack cue; contact timing pending validation"
+description = "Native Sekiro incoming attack response HUD with optional estimated timing"
 repository = "https://github.com/thisguymartin/sekiro-deflect-observer"
 
 [lib]
@@ -12,10 +12,15 @@ name = "sekiro_deflect_observer"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+serde = { version = "=1.0.195", features = ["derive"] }
 sha2 = "=0.10.9"
+toml = "=0.8.8"
 
 [target.'cfg(windows)'.dependencies]
 hudhook = { version = "=0.9.2", default-features = false, features = ["dx11"] }
+
+[patch.crates-io]
+hudhook = { path = "vendor/hudhook" }
 
 [profile.release]
 lto = "thin"

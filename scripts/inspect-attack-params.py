@@ -82,14 +82,18 @@ def parse_param(data, definition):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('game_directory',type=Path)
+    parser.add_argument('--output-directory', type=Path, default=ROOT/'dist/game-analysis-v2')
+    parser.add_argument('--include-warning-data', action='store_true')
     args=parser.parse_args()
     if hashlib.sha256((args.game_directory/'sekiro.exe').read_bytes()).hexdigest()!=archives.RESEARCH_HASH:
         raise ValueError('Unsupported executable')
-    inventory=json.loads((ROOT/'dist/game-analysis-v2/archive-inventory.json').read_text())
+    output=args.output_directory
+    inventory=json.loads((output/'archive-inventory.json').read_text())
     entry=next(e for e in inventory['entries'] if e['paths']==['/param/gameparam/gameparam.parambnd.dcx'])
     contents,source_hash=archives.extract_container(entry,args.game_directory)
-    output=ROOT/'dist/game-analysis-v2'
     wanted={'AtkParam_Npc':'AtkParam','BehaviorParam':'BehaviorParam','NpcParam':'NpcParam','ThrowParam':'ThrowParam'}
+    if args.include_warning_data:
+        wanted.update(Bullet='BulletParam', SpEffectParam='SpEffect')
     sources={}
     for name,data in archives.binder_timelines(contents,args.game_directory,suffix='.param'):
         short=name.replace('\\','/').split('/')[-1].removesuffix('.param')

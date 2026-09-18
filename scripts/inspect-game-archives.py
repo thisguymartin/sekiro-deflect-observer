@@ -288,6 +288,9 @@ def tae_timelines(data):
             if event_type == 1 and parameter_ptr:
                 event['attack_type'] = struct.unpack_from('<i', data, parameter_ptr)[0]
                 event['behavior_judge_id'] = struct.unpack_from('<i', data, parameter_ptr + 8)[0]
+            if event_type in (2, 4) and parameter_ptr:
+                event['behavior_judge_id'] = struct.unpack_from('<i', data, parameter_ptr + 8)[0]
+                event['bullet_enabled'] = bool(data[parameter_ptr + 13])
             if event_type == 304 and parameter_ptr:
                 event['behavior_judge_id'] = struct.unpack_from('<i', data, parameter_ptr + 4)[0]
             if event_type == 700 and parameter_ptr:

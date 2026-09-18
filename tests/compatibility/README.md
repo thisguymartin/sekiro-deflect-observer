@@ -1,6 +1,9 @@
 # Compatibility records
 
-There are no completed game test runs in this checkout. The [session template](session-template.md) is a blank form, not evidence of compatibility.
+There are no completed structured compatibility runs in this checkout. The
+[September 18 gameplay walkthrough](../../docs/screenshots.md) provides live
+visual evidence, but does not identify the full OS/driver/loader/artifact setup.
+The [session template](session-template.md) is a blank form, not evidence of compatibility.
 
 ## Save a report
 
