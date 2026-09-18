@@ -1,38 +1,47 @@
 # Documentation
 
-Current source: **0.12.4-preview**. Start with the
-[project README](../README.md) for the gameplay introduction and quick install.
+Current source: **0.12.4-preview**.
 
-## Play and configure
+Choose the section that matches what you are doing.
 
-- [Gameplay screenshots and walkthrough](screenshots.md) — frames and a short
-  animation from the September 18 recording, with timestamps and explanations.
-- [Build and run on Windows](windows.md) — install, controls, removal and troubleshooting.
-- [Configuration](configuration.md) — defaults, bounds, placement and reload behavior.
-- [HUD behavior](cue-preview.md) — response labels, animation phases and practice status.
-- [Enemy-speed practice](enemy-speed-practice.md) — F11, speed presets and limitations.
-- [Incoming attack classification](incoming-attacks.md) — data sources and unresolved moves.
+## Use the observer
 
-## Evidence and development
+- [Install and remove the observer](users/install.md)
+- [Change settings](users/configuration.md)
+- [Fix common problems](users/troubleshooting.md)
+- [Check supported environments](users/compatibility.md)
 
-- [Current validation](validation-0.12.4.md) — recorded build checks and the new video evidence.
-- [Compatibility status](compatibility.md) and [release testing](release-testing.md).
-- [Architecture](architecture.md) and [feature ownership](feature-boundaries.md).
-- [Legacy timing model](parry-cue.md) and [timing coverage](boss-move-coverage.md).
-- [Gameplay checklist](../tests/manual/gameplay-checklist.md) and
-  [compatibility reports](../tests/compatibility/README.md).
+## Learn the gameplay cues
 
-## Historical references
+- [Read the HUD](gameplay/hud.md)
+- [Use enemy-speed practice](gameplay/practice.md)
+- [Follow a recorded attack](gameplay/walkthrough.md)
+- [Use the optional legacy timing mode](gameplay/legacy-timing.md)
 
-Versioned validation pages retain the results and limitations recorded for that
-version. The [visual archive](screenshots.md#historical-synthetic-previews) keeps
-earlier synthetic designs separate from current gameplay screenshots.
+The default HUD identifies attack phases. It does not confirm contact or a
+successful deflect.
 
-The [0.6.3 sharing guide](sharing-beta.md) and [Nexus listing draft](nexus-beta-draft.md)
-describe the older drop-in package. The [Cheat Engine testing guide](testing.md)
-describes an earlier external prototype. They are not current install instructions.
+## Understand how it works
 
-[Reader research](reader-research.md), [enemy reader research](enemy-reader-research.md),
-[game-file analysis](game-file-analysis.md) and [reverse engineering](reverse-engineering.md)
-document research evidence and open questions. Earlier decisions remain in the
-[changelog](../CHANGELOG.md) and Git history.
+[How one attack becomes a cue](how-it-works.md) explains the runtime flow without
+requiring you to read the source first.
+
+## Develop and release
+
+- [Developer guide](development/README.md)
+- [Architecture and ownership](development/architecture.md)
+- [Build on Windows](development/build.md)
+- [Run the test suites](development/testing.md)
+- [Test a release candidate](development/release.md)
+
+## Inspect evidence
+
+[Research and evidence](research/README.md) contains generated datasets, reverse
+engineering notes, classification evidence, and open validation work. These
+pages support development claims. They are not player instructions.
+
+## Read historical records
+
+[The archive](archive/README.md) contains old validation reports, the 0.6 friend
+beta instructions, and the earlier Cheat Engine prototype guide. Do not use
+archived pages to install the current version.

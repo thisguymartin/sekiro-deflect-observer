@@ -75,7 +75,10 @@ class IncomingTests(unittest.TestCase):
     def test_generated_table_has_exact_sorted_provenance(self):
         source, evidence, report = generator.generate(DATA)
         self.assertEqual(source, (ROOT / 'src/incoming_attacks.rs').read_text())
-        self.assertEqual(evidence, (ROOT / 'docs/incoming-coverage.json').read_text())
+        self.assertEqual(
+            evidence,
+            (ROOT / 'docs/research/data/incoming-coverage.json').read_text(),
+        )
         self.assertEqual(report['phases'], 2112)
         self.assertEqual(report['counts'], dict(parry=1632, unverified=293, jump=59, mikiri=66, dodge=41, avoid=21))
         keys = [(row['model'], row['animation'], row['start'], row['end']) for row in report['records']]

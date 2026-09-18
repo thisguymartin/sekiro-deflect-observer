@@ -1,0 +1,1869 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="A visual, source-backed guide to how Sekiro Deflect Observer captures attacks, updates state, and draws each frame.">
+  <title>How Sekiro Deflect Observer works</title>
+  <script>document.documentElement.classList.add('js');</script>
+  <style>
+    :root {
+      --ink: #f1f2ed;
+      --muted: #a9ada7;
+      --dim: #7d837e;
+      --ground: #111412;
+      --ground-raised: #181c19;
+      --ground-soft: #202521;
+      --line: #343b35;
+      --line-strong: #555f56;
+      --green: #4ee367;
+      --green-soft: #a8efb4;
+      --red: #f33c4e;
+      --amber: #f2c75c;
+      --cyan: #61c9e9;
+      --orange: #ef783e;
+      --max: 1180px;
+      --reading: 72ch;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--ground);
+    }
+
+    body {
+      margin: 0;
+      overflow-x: clip;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #0c0f0d 0, var(--ground) 32rem),
+        var(--ground);
+      font-family: "Avenir Next", Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+      color: #08100a;
+      background: var(--green-soft);
+    }
+
+    a {
+      color: var(--green-soft);
+      text-decoration-color: rgba(168, 239, 180, 0.45);
+      text-underline-offset: 0.2em;
+    }
+
+    a:hover { text-decoration-color: currentColor; }
+
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--amber);
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+
+    code,
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    code {
+      padding: 0.12em 0.34em;
+      color: #d9f7df;
+      background: #252b26;
+      border-radius: 4px;
+    }
+
+    .skip-link {
+      position: fixed;
+      z-index: 20;
+      top: 1rem;
+      left: 1rem;
+      padding: 0.65rem 0.9rem;
+      color: #080b09;
+      background: var(--amber);
+      transform: translateY(-180%);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .shell {
+      width: min(100% - 2rem, var(--max));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: auto;
+      display: grid;
+      align-content: center;
+      gap: clamp(2rem, 4vw, 3.5rem);
+      padding: clamp(3rem, 7vw, 6rem) 0 2.5rem;
+    }
+
+    .hero-copy {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 0.75fr);
+      gap: clamp(2rem, 6vw, 6rem);
+      align-items: end;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.05;
+      text-wrap: balance;
+    }
+
+    h1 {
+      max-width: 12ch;
+      font-family: Charter, Georgia, serif;
+      font-size: clamp(3.3rem, 8vw, 6rem);
+      font-weight: 600;
+      letter-spacing: -0.035em;
+    }
+
+    h1 span { color: var(--green); }
+
+    h2 {
+      max-width: 20ch;
+      font-family: Charter, Georgia, serif;
+      font-size: clamp(2.3rem, 4vw, 3.6rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+    }
+
+    h3 {
+      font-size: 1rem;
+      letter-spacing: 0.01em;
+    }
+
+    .lede {
+      max-width: 35rem;
+      margin: 0;
+      color: #c7cbc6;
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+    }
+
+    .truth-note {
+      margin: 1.5rem 0 0;
+      padding-top: 1rem;
+      color: var(--muted);
+      border-top: 1px solid var(--line-strong);
+      font-size: 0.92rem;
+    }
+
+    .hero-route {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      overflow-x: auto;
+      padding: 1rem 0;
+      color: var(--muted);
+      border-top: 1px solid var(--line-strong);
+      border-bottom: 1px solid var(--line-strong);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    .hero-route span:nth-child(odd) { color: var(--ink); }
+    .hero-route span:nth-child(even) { color: var(--green); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 15rem minmax(0, 1fr);
+      gap: clamp(2rem, 7vw, 7rem);
+      align-items: start;
+      padding-bottom: 8rem;
+    }
+
+    .toc {
+      position: sticky;
+      top: 1.5rem;
+      max-height: calc(100vh - 3rem);
+      overflow-y: auto;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .toc p {
+      margin: 0 0 1rem;
+      color: var(--dim);
+      font-size: 0.76rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .toc ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .toc li { border-bottom: 1px solid var(--line); }
+
+    .toc a {
+      display: block;
+      padding: 0.7rem 0;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+    }
+
+    .toc a:hover { color: var(--ink); }
+
+    .mobile-toc { display: none; }
+
+    main { min-width: 0; }
+
+    section {
+      scroll-margin-top: 2rem;
+      padding: clamp(4rem, 9vw, 8rem) 0;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    section:first-child { padding-top: 1.25rem; }
+
+    .section-intro {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.2rem;
+      margin-bottom: 2.75rem;
+      align-items: start;
+    }
+
+    .section-intro p {
+      max-width: var(--reading);
+      margin: 0;
+      color: #c8ccc7;
+      font-size: 1.05rem;
+    }
+
+    .plain-flow {
+      display: grid;
+      gap: 0;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .flow-row {
+      display: grid;
+      grid-template-columns: 6.5rem minmax(10rem, 0.7fr) minmax(0, 1.3fr);
+      gap: 1.25rem;
+      padding: 1.35rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .flow-row .step {
+      color: var(--green);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .flow-row p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .rhythms {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid var(--line-strong);
+      border-bottom: 1px solid var(--line-strong);
+    }
+
+    .rhythm {
+      min-height: 19rem;
+      padding: 1.7rem;
+      border-right: 1px solid var(--line);
+    }
+
+    .rhythm:last-child { border-right: 0; }
+
+    .rhythm .rate {
+      display: block;
+      margin: 1.2rem 0 2.3rem;
+      color: var(--green);
+      font-family: Charter, Georgia, serif;
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    .rhythm p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .note {
+      max-width: var(--reading);
+      margin: 2.5rem 0;
+      padding: 1.25rem 0;
+      border-top: 1px solid var(--amber);
+      border-bottom: 1px solid var(--amber);
+      color: #ddd3b7;
+    }
+
+    .note strong { color: var(--amber); }
+
+    .model-list { border-top: 1px solid var(--line-strong); }
+
+    .model {
+      display: grid;
+      grid-template-columns: minmax(11rem, 0.62fr) minmax(0, 1.38fr);
+      gap: 2rem;
+      padding: 1.6rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .model h3 code {
+      padding: 0;
+      color: var(--ink);
+      background: transparent;
+      font-size: 1rem;
+    }
+
+    .model p { margin: 0; color: var(--muted); }
+
+    .fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.7rem;
+      margin-top: 0.85rem;
+    }
+
+    .fields code {
+      color: #b9c2ba;
+      background: transparent;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+    }
+
+    .state-lane {
+      display: grid;
+      grid-template-columns: 0.7fr 1.4fr 1fr;
+      overflow: hidden;
+      margin: 2.2rem 0 1rem;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+    }
+
+    .state-lane div {
+      min-height: 8rem;
+      padding: 1.15rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .state-lane div:last-child { border-right: 0; }
+
+    .state-lane strong { display: block; margin-bottom: 1.8rem; }
+
+    .state-lane span { display: block; font-size: 0.82rem; line-height: 1.45; }
+
+    .state-lane .windup { color: #071007; background: var(--green); }
+    .state-lane .active { color: #141514; background: #f3f4ef; }
+    .state-lane .after { color: var(--muted); background: var(--ground-soft); }
+
+    .legacy-lane {
+      display: grid;
+      grid-template-columns: 1.5fr 0.7fr 0.45fr;
+      margin-top: 2rem;
+    }
+
+    .legacy-lane div {
+      padding: 1rem;
+      border-top: 3px solid var(--line-strong);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .legacy-lane .prepare { border-color: var(--cyan); }
+    .legacy-lane .action { border-color: var(--green); color: var(--green-soft); }
+    .legacy-lane .expired { border-color: var(--dim); }
+
+    .separation {
+      display: grid;
+      grid-template-columns: 1fr 4.5rem 1fr;
+      align-items: stretch;
+      margin: 2rem 0;
+    }
+
+    .separation article {
+      padding: 1.5rem;
+      background: var(--ground-raised);
+      border-top: 3px solid var(--line-strong);
+    }
+
+    .separation article:first-child { border-top-color: var(--green); }
+    .separation article:last-child { border-top-color: var(--amber); }
+
+    .separation article p { margin: 1rem 0 0; color: var(--muted); }
+
+    .separation .divider {
+      display: grid;
+      place-items: center;
+      color: var(--dim);
+      font-size: 1.4rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th,
+    td {
+      padding: 0.95rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      color: var(--dim);
+      font-size: 0.74rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    td:first-child { color: var(--ink); }
+
+    .status {
+      display: inline-block;
+      min-width: 5.5rem;
+      color: var(--green-soft);
+    }
+
+    details {
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    summary {
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 650;
+    }
+
+    details p {
+      max-width: var(--reading);
+      margin: 1rem 0 0;
+      color: var(--muted);
+    }
+
+    .source-map {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 2.2rem;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .source-row {
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .source-row a {
+      display: inline-block;
+      margin-bottom: 0.25rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85rem;
+    }
+
+    .source-row p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .closing {
+      padding: 4rem 0 2rem;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .closing p { max-width: var(--reading); color: var(--muted); }
+
+    .lesson-intro {
+      max-width: 52rem;
+      margin-bottom: 2.5rem;
+      color: #c8ccc7;
+      font-size: 1.08rem;
+    }
+
+    .lesson-intro strong { color: var(--ink); }
+
+    .trace-shell {
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: #0d100e;
+    }
+
+    .trace-progress {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      border-bottom: 1px solid var(--line-strong);
+    }
+
+    .trace-node {
+      position: relative;
+      min-height: 7.5rem;
+      padding: 1rem 0.85rem 1.15rem;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-right: 1px solid var(--line);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .trace-node:last-child { border-right: 0; }
+
+    .trace-node::after {
+      position: absolute;
+      right: -0.45rem;
+      top: 2rem;
+      z-index: 2;
+      width: 0.8rem;
+      height: 0.8rem;
+      content: "";
+      background: #0d100e;
+      border-top: 1px solid var(--line-strong);
+      border-right: 1px solid var(--line-strong);
+      transform: rotate(45deg);
+    }
+
+    .trace-node:last-child::after { display: none; }
+
+    .trace-node:hover { color: var(--ink); background: var(--ground-raised); }
+
+    .trace-node[aria-selected="true"] {
+      color: #08100a;
+      background: var(--green);
+    }
+
+    .trace-node[aria-selected="true"]::after {
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .trace-node:focus-visible {
+      z-index: 3;
+      outline: 3px solid var(--amber);
+      outline-offset: -4px;
+    }
+
+    .trace-number {
+      display: block;
+      margin-bottom: 1rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .trace-node strong {
+      display: block;
+      font-size: 0.88rem;
+      line-height: 1.3;
+    }
+
+    .trace-stage {
+      min-height: 25rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(17rem, 0.85fr);
+    }
+
+    .trace-panel {
+      display: grid;
+      align-content: start;
+      gap: 1.4rem;
+      padding: clamp(1.5rem, 4vw, 3rem);
+    }
+
+    .js .trace-panel[hidden] { display: none; }
+
+    .trace-owner {
+      width: fit-content;
+      padding: 0.3rem 0.6rem;
+      color: var(--green-soft);
+      background: #1c2c1f;
+      border: 1px solid #35523a;
+      border-radius: 999px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+    }
+
+    .trace-panel h3 {
+      max-width: 22ch;
+      font-family: Charter, Georgia, serif;
+      font-size: clamp(1.9rem, 4vw, 3rem);
+      letter-spacing: -0.025em;
+    }
+
+    .trace-panel p {
+      max-width: 58ch;
+      margin: 0;
+      color: #c8ccc7;
+    }
+
+    .trace-why {
+      padding-top: 1rem;
+      color: var(--muted) !important;
+      border-top: 1px solid var(--line);
+      font-size: 0.9rem;
+    }
+
+    .trace-data {
+      padding: clamp(1.5rem, 4vw, 2.5rem);
+      color: #bac0ba;
+      background: var(--ground-raised);
+      border-left: 1px solid var(--line-strong);
+    }
+
+    .trace-data > span {
+      display: block;
+      margin-bottom: 1.25rem;
+      color: var(--dim);
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .payload {
+      margin: 0;
+      padding: 0;
+      overflow-x: auto;
+      color: #d6ddd7;
+      background: transparent;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    .payload .key { color: var(--cyan); }
+    .payload .value { color: var(--green-soft); }
+    .payload .comment { color: var(--dim); }
+
+    .trace-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.9rem 1rem;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .trace-controls button {
+      min-height: 2.75rem;
+      padding: 0.55rem 0.85rem;
+      color: var(--ink);
+      background: var(--ground-soft);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .trace-controls button:hover { border-color: var(--green); }
+    .trace-controls button:disabled { color: var(--dim); cursor: not-allowed; opacity: 0.55; }
+    .trace-controls button:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+
+    .trace-status {
+      color: var(--dim);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+    }
+
+    .system-map {
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .system-lane {
+      display: grid;
+      grid-template-columns: 9rem minmax(0, 1fr);
+      min-height: 6rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .system-lane > strong {
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      color: var(--dim);
+      background: #0d100e;
+      border-right: 1px solid var(--line);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .lane-actions {
+      display: flex;
+      min-width: 0;
+      max-width: 100%;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      padding: 0.9rem 1rem;
+    }
+
+    .lane-action {
+      flex: 0 0 auto;
+      padding: 0.55rem 0.75rem;
+      color: #d4d8d3;
+      background: var(--ground-raised);
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    .lane-arrow {
+      flex: 0 0 2.2rem;
+      color: var(--green);
+      text-align: center;
+    }
+
+    .write-lane { border-color: #6a5630; }
+    .write-lane > strong { color: var(--amber); }
+    .write-lane .lane-arrow { color: var(--amber); }
+
+    .clock-diagram {
+      padding: 1.6rem;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: #0d100e;
+    }
+
+    .clock-axis {
+      display: grid;
+      grid-template-columns: 9rem 1fr;
+      margin-bottom: 0.75rem;
+      color: var(--dim);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.7rem;
+    }
+
+    .clock-axis div:last-child {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .clock-row {
+      display: grid;
+      grid-template-columns: 9rem 1fr;
+      align-items: center;
+      min-height: 5.5rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .clock-label strong { display: block; font-size: 0.86rem; }
+    .clock-label span { color: var(--dim); font-size: 0.74rem; }
+
+    .clock-track {
+      position: relative;
+      height: 2px;
+      margin: 0 0.5rem;
+      background: var(--line-strong);
+    }
+
+    .tick {
+      position: absolute;
+      top: 50%;
+      width: 0.7rem;
+      height: 0.7rem;
+      background: var(--green);
+      border: 2px solid #0d100e;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .tick::after {
+      position: absolute;
+      top: 0.85rem;
+      left: 50%;
+      color: var(--muted);
+      content: attr(data-label);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.68rem;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+
+    .event-tick { width: 1rem; height: 1rem; background: var(--amber); }
+    .frame-tick { background: var(--cyan); }
+
+    .clock-lesson {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .clock-lesson div { padding: 1.2rem; background: var(--ground-raised); }
+    .clock-lesson strong { display: block; margin-bottom: 0.5rem; }
+    .clock-lesson p { margin: 0; color: var(--muted); font-size: 0.86rem; }
+
+    .data-journey {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      align-items: stretch;
+      gap: 2.1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .journey-node {
+      position: relative;
+      padding: 1.2rem;
+      background: var(--ground-raised);
+      border-top: 3px solid var(--line-strong);
+    }
+
+    .journey-node::after {
+      position: absolute;
+      top: 50%;
+      right: -1.55rem;
+      color: var(--green);
+      content: "\2192";
+      font-size: 1.5rem;
+      transform: translateY(-50%);
+    }
+
+    .journey-node:last-child::after { display: none; }
+    .journey-node:nth-child(2) { border-color: var(--cyan); }
+    .journey-node:nth-child(3) { border-color: var(--amber); }
+    .journey-node:nth-child(4) { border-color: var(--green); }
+    .journey-node h3 { margin-bottom: 1rem; }
+    .journey-node p { margin: 0; color: var(--muted); font-size: 0.86rem; }
+    .journey-node code { display: block; width: fit-content; margin-top: 1rem; }
+
+    .sequence {
+      position: relative;
+      display: grid;
+      gap: 0.75rem;
+      padding: 1.5rem 0;
+    }
+
+    .sequence::before {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 4.5rem;
+      width: 1px;
+      content: "";
+      background: var(--line-strong);
+    }
+
+    .sequence-step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 9rem minmax(0, 1fr);
+      gap: 1.4rem;
+      align-items: start;
+    }
+
+    .sequence-step::before {
+      position: absolute;
+      top: 1.2rem;
+      left: 4.18rem;
+      z-index: 2;
+      width: 0.65rem;
+      height: 0.65rem;
+      content: "";
+      background: var(--green);
+      border: 2px solid var(--ground);
+      border-radius: 50%;
+    }
+
+    .sequence-actor {
+      padding-top: 0.7rem;
+      color: var(--green-soft);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.74rem;
+      text-align: right;
+    }
+
+    .sequence-message {
+      padding: 0.9rem 1rem;
+      background: var(--ground-raised);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+
+    .sequence-message strong { display: block; margin-bottom: 0.35rem; }
+    .sequence-message p { margin: 0; color: var(--muted); font-size: 0.86rem; }
+
+    .state-diagram {
+      width: 100%;
+      height: auto;
+      margin: 1rem 0 2rem;
+      overflow: visible;
+    }
+
+    .state-diagram-wrap { max-width: 100%; }
+
+    .state-diagram .node-box { fill: #181c19; stroke: #555f56; stroke-width: 1.5; }
+    .state-diagram .node-active { fill: #1c2c1f; stroke: #4ee367; }
+    .state-diagram .node-risk { fill: #2a2417; stroke: #f2c75c; }
+    .state-diagram .arrow { fill: none; stroke: #7d837e; stroke-width: 1.5; marker-end: url(#arrowhead); }
+    .state-diagram .arrow-write { stroke: #f2c75c; }
+    .state-diagram text { fill: #f1f2ed; font-family: "Avenir Next", Avenir, sans-serif; }
+    .state-diagram .node-title { font-size: 15px; font-weight: 700; }
+    .state-diagram .node-copy { fill: #a9ada7; font-size: 12px; }
+    .state-diagram .edge-label { fill: #a9ada7; font-size: 11px; }
+
+    .diagram-key {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.5rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .diagram-key span {
+      display: inline-block;
+      width: 0.8rem;
+      height: 0.8rem;
+      margin-right: 0.45rem;
+      border-radius: 2px;
+      vertical-align: -0.08rem;
+    }
+
+    .key-read { background: var(--green); }
+    .key-write { background: var(--amber); }
+    .key-stop { background: var(--red); }
+
+    .reference-group {
+      margin-top: 2rem;
+      border-top: 1px solid var(--line-strong);
+    }
+
+    .reference-group > summary {
+      padding: 1.2rem 0;
+      font-family: Charter, Georgia, serif;
+      font-size: 1.35rem;
+    }
+
+    @media (max-width: 880px) {
+      .hero-copy,
+      .section-intro { grid-template-columns: 1fr; }
+
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: static; display: none; }
+      .mobile-toc {
+        display: block;
+        margin-top: 1rem;
+        padding: 0.8rem 1rem;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius);
+        background: var(--ground-raised);
+      }
+      .mobile-toc summary { cursor: pointer; }
+      .mobile-toc ol {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 1rem;
+        margin: 0.8rem 0 0;
+        padding-left: 1.2rem;
+      }
+      .mobile-toc li { padding: 0.25rem 0; }
+
+      .rhythms,
+      .source-map { grid-template-columns: 1fr; }
+      .rhythm { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+      .rhythm:last-child { border-bottom: 0; }
+
+      .flow-row,
+      .model { grid-template-columns: 1fr; gap: 0.55rem; }
+
+      .trace-progress { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .trace-node:nth-child(3) { border-right: 0; }
+      .trace-node:nth-child(-n + 3) { border-bottom: 1px solid var(--line); }
+      .trace-node::after { display: none; }
+      .trace-stage { grid-template-columns: 1fr; }
+      .trace-data { border-top: 1px solid var(--line-strong); border-left: 0; }
+      .data-journey { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .journey-node:nth-child(2)::after { display: none; }
+      .journey-node:nth-child(2)::before {
+        position: absolute;
+        right: 50%;
+        bottom: -1.9rem;
+        color: var(--green);
+        content: "\2193";
+        font-size: 1.5rem;
+        transform: translateX(50%);
+      }
+    }
+
+    @media (max-width: 620px) {
+      body { font-size: 16px; }
+      .shell { width: min(100% - 1.25rem, var(--max)); }
+      .hero { min-height: auto; padding-top: 3.5rem; }
+      h1 { font-size: clamp(3rem, 16vw, 4.2rem); }
+      section { padding: 4.5rem 0; }
+      .state-lane,
+      .legacy-lane,
+      .separation { grid-template-columns: 1fr; }
+      .state-lane div { min-height: 0; border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
+      .separation .divider { min-height: 3.5rem; }
+      .mobile-toc ol { grid-template-columns: 1fr; }
+      table { display: block; overflow-x: auto; }
+
+      .trace-progress { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .trace-node:nth-child(3) { border-right: 1px solid var(--line); }
+      .trace-node:nth-child(even) { border-right: 0; }
+      .trace-node:nth-child(-n + 4) { border-bottom: 1px solid var(--line); }
+      .trace-stage { min-height: 0; }
+      .trace-controls { align-items: stretch; }
+      .trace-status { align-self: center; text-align: center; }
+      .system-lane { grid-template-columns: 1fr; }
+      .system-lane > strong { border-right: 0; border-bottom: 1px solid var(--line); }
+      .clock-diagram { padding: 1rem 0.8rem; }
+      .clock-axis,
+      .clock-row { grid-template-columns: 6.5rem 1fr; }
+      .clock-lesson { grid-template-columns: 1fr; }
+      .data-journey { grid-template-columns: 1fr; gap: 2rem; }
+      .journey-node::after,
+      .journey-node:nth-child(2)::before {
+        display: block;
+        top: auto;
+        right: 50%;
+        bottom: -1.9rem;
+        content: "\2193";
+        transform: translateX(50%);
+      }
+      .journey-node:last-child::after { display: none; }
+      .sequence::before { left: 0.35rem; }
+      .sequence-step { grid-template-columns: 1fr; gap: 0.3rem; padding-left: 1.5rem; }
+      .sequence-step::before { left: 0; }
+      .sequence-actor { padding-top: 0; text-align: left; }
+      .state-diagram { min-width: 44rem; }
+      .state-diagram-wrap { overflow-x: auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+
+    @media print {
+      :root { --ink: #111; --muted: #444; --dim: #555; --ground: #fff; --ground-raised: #f5f5f2; --ground-soft: #eee; --line: #ccc; --line-strong: #888; }
+      body { color: #111; background: #fff; }
+      .hero { min-height: auto; }
+      .toc { display: none; }
+      .layout { grid-template-columns: 1fr; }
+      a { color: #111; }
+      code { color: #111; background: #eee; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the guide</a>
+
+  <header class="hero shell">
+    <div class="hero-copy">
+      <div>
+        <h1>How one attack becomes a <span>cue</span></h1>
+      </div>
+      <div>
+        <p class="lede">Sekiro Deflect Observer is code loaded inside Sekiro as a Windows DLL. It watches a locked enemy's animation, classifies the current attack phase, and asks ImGui to draw a HUD during each DirectX 11 frame.</p>
+        <p class="truth-note">This guide follows the current <span class="mono">0.12.1-preview</span> source. It describes animation evidence, not collision, button input, or a confirmed deflect.</p>
+      </div>
+    </div>
+
+    <div class="hero-route" aria-label="Shortest mental model">
+      <span>Sekiro memory</span><span aria-hidden="true">→</span>
+      <span>validated Target</span><span aria-hidden="true">→</span>
+      <span>classified Phase</span><span aria-hidden="true">→</span>
+      <span>HUD Decision</span>
+    </div>
+  </header>
+
+  <div class="layout shell">
+    <nav class="toc" aria-label="Guide sections">
+      <p>On this page</p>
+      <ol>
+        <li><a href="#trace">Follow one attack</a></li>
+        <li><a href="#mental-model">Who runs what</a></li>
+        <li><a href="#rhythms">Events, polls, and frames</a></li>
+        <li><a href="#models">The data models</a></li>
+        <li><a href="#frame">One frame, step by step</a></li>
+        <li><a href="#states">States and timing</a></li>
+        <li><a href="#practice">Practice mode</a></li>
+        <li><a href="#safety">Safety boundaries</a></li>
+        <li><a href="#controls">Controls and config</a></li>
+        <li><a href="#logs">Logs and evidence</a></li>
+        <li><a href="#source-map">Where code lives</a></li>
+        <li><a href="#glossary">Glossary</a></li>
+      </ol>
+    </nav>
+
+    <details class="mobile-toc">
+      <summary>Jump to a section</summary>
+      <ol>
+        <li><a href="#trace">Follow one attack</a></li>
+        <li><a href="#mental-model">Who runs what</a></li>
+        <li><a href="#rhythms">Events, polls, and frames</a></li>
+        <li><a href="#models">The data models</a></li>
+        <li><a href="#frame">One frame, step by step</a></li>
+        <li><a href="#states">States and timing</a></li>
+        <li><a href="#practice">Practice mode</a></li>
+        <li><a href="#safety">Safety boundaries</a></li>
+        <li><a href="#controls">Controls and config</a></li>
+        <li><a href="#logs">Logs and evidence</a></li>
+        <li><a href="#source-map">Where code lives</a></li>
+        <li><a href="#glossary">Glossary</a></li>
+      </ol>
+    </details>
+
+    <main id="main">
+      <section id="trace">
+        <div class="section-intro">
+          <h2>Follow one attack through the whole mod</h2>
+          <p>Start here. Click each numbered handoff. The left side explains what the code does. The right side shows how the data changes before the next part receives it.</p>
+        </div>
+
+        <p class="lesson-intro"><strong>Example.</strong> The locked enemy advances animation <code>3000</code> to <code>0.42 s</code>. The values below are illustrative, but the objects and handoffs match the current source.</p>
+
+        <div class="trace-shell">
+          <div class="trace-progress" role="tablist" aria-label="Attack processing steps">
+            <button class="trace-node" id="trace-tab-0" role="tab" aria-selected="true" aria-controls="trace-panel-0" data-trace-step="0">
+              <span class="trace-number">01</span>
+              <strong>Game advances animation</strong>
+            </button>
+            <button class="trace-node" id="trace-tab-1" role="tab" aria-selected="false" aria-controls="trace-panel-1" data-trace-step="1" tabindex="-1">
+              <span class="trace-number">02</span>
+              <strong>Hook captures evidence</strong>
+            </button>
+            <button class="trace-node" id="trace-tab-2" role="tab" aria-selected="false" aria-controls="trace-panel-2" data-trace-step="2" tabindex="-1">
+              <span class="trace-number">03</span>
+              <strong>Worker builds Target</strong>
+            </button>
+            <button class="trace-node" id="trace-tab-3" role="tab" aria-selected="false" aria-controls="trace-panel-3" data-trace-step="3" tabindex="-1">
+              <span class="trace-number">04</span>
+              <strong>Classifier finds Phase</strong>
+            </button>
+            <button class="trace-node" id="trace-tab-4" role="tab" aria-selected="false" aria-controls="trace-panel-4" data-trace-step="4" tabindex="-1">
+              <span class="trace-number">05</span>
+              <strong>Engine makes Decision</strong>
+            </button>
+            <button class="trace-node" id="trace-tab-5" role="tab" aria-selected="false" aria-controls="trace-panel-5" data-trace-step="5" tabindex="-1">
+              <span class="trace-number">06</span>
+              <strong>Renderer draws cue</strong>
+            </button>
+          </div>
+
+          <div class="trace-stage">
+            <article class="trace-panel" id="trace-panel-0" role="tabpanel" aria-labelledby="trace-tab-0" data-trace-panel="0">
+              <span class="trace-owner">Sekiro game thread</span>
+              <h3>Sekiro updates the enemy first</h3>
+              <p>The game advances its own animation state. Your DLL has not decided anything yet. It is waiting inside the same process for the researched animation function to run.</p>
+              <p class="trace-why">Keep this boundary clear. The game owns the animation. The mod only observes a copy of its state.</p>
+            </article>
+            <aside class="trace-data" data-trace-data="0">
+              <span>What exists now</span>
+              <pre class="payload"><span class="comment">// Inside Sekiro memory</span>
+enemy.animation = {
+  <span class="key">id</span>: <span class="value">3000</span>,
+  <span class="key">time</span>: <span class="value">0.42</span>,
+  <span class="key">owner</span>: <span class="value">locked_enemy</span>
+}</pre>
+            </aside>
+
+            <article class="trace-panel" id="trace-panel-1" role="tabpanel" aria-labelledby="trace-tab-1" data-trace-panel="1" hidden>
+              <span class="trace-owner">Animation hook</span>
+              <h3>The hook copies a completed batch</h3>
+              <p>The detour reads the 224-byte animation batch twice. Matching reads mean the copy stayed stable. It stores one fresh snapshot, then calls Sekiro's original function.</p>
+              <p class="trace-why">The hook captures a better timestamp. It does not replace the game function and it does not classify the attack.</p>
+            </article>
+            <aside class="trace-data" data-trace-data="1" hidden>
+              <span>New evidence</span>
+              <pre class="payload">HookSnapshot {
+  <span class="key">animation_id</span>: <span class="value">3000</span>,
+  <span class="key">animation_time</span>: <span class="value">0.42</span>,
+  <span class="key">captured_at</span>: <span class="value">T + 2.1 ms</span>,
+  <span class="key">source</span>: <span class="value">EventBatch</span>
+}</pre>
+            </aside>
+
+            <article class="trace-panel" id="trace-panel-2" role="tabpanel" aria-labelledby="trace-tab-2" data-trace-panel="2" hidden>
+              <span class="trace-owner">observer-reader thread</span>
+              <h3>The worker joins facts into one Target</h3>
+              <p>On its next loop, the worker validates the current lock and animation owner. It combines the hook snapshot with enemy identity, health, positions, facing, and camera data.</p>
+              <p class="trace-why">Downstream code receives one validated object. It does not repeat pointer walks or guess whether the animation belongs to this target.</p>
+            </article>
+            <aside class="trace-data" data-trace-data="2" hidden>
+              <span>Published model</span>
+              <pre class="payload">Target {
+  <span class="key">handle</span>: <span class="value">0x…A410</span>,
+  <span class="key">model</span>: <span class="value">1550</span>,
+  <span class="key">npc_param</span>: <span class="value">155000</span>,
+  <span class="key">animation</span>: <span class="value">#3000 @ 0.42 s</span>,
+  <span class="key">capture_source</span>: <span class="value">EventBatch</span>
+}</pre>
+            </aside>
+
+            <article class="trace-panel" id="trace-panel-3" role="tabpanel" aria-labelledby="trace-tab-3" data-trace-panel="3" hidden>
+              <span class="trace-owner">attack::classify</span>
+              <h3>The classifier matches facts to a Phase</h3>
+              <p>The classifier searches the generated rows for model <code>1550</code>, its NPC variation, animation <code>3000</code>, and time <code>0.42</code>. A matching row says which attack phase is active.</p>
+              <p class="trace-why">A Phase is game evidence. It says what the animation data supports before HUD preferences change the presentation.</p>
+            </article>
+            <aside class="trace-data" data-trace-data="3" hidden>
+              <span>Classification result</span>
+              <pre class="payload">Phase {
+  <span class="key">kind</span>: <span class="value">Parryable</span>,
+  <span class="key">start</span>: <span class="value">0.38</span>,
+  <span class="key">end</span>: <span class="value">0.51</span>,
+  <span class="key">animation_time</span>: <span class="value">0.42</span>,
+  <span class="key">index</span>: <span class="value">0</span>
+}</pre>
+            </aside>
+
+            <article class="trace-panel" id="trace-panel-4" role="tabpanel" aria-labelledby="trace-tab-4" data-trace-panel="4" hidden>
+              <span class="trace-owner">timing::Engine</span>
+              <h3>The engine converts evidence into a HUD answer</h3>
+              <p>Default incoming mode turns the parryable Phase into an active <code>PARRY</code> decision. It carries progress and capture evidence forward. Unknown or stale input produces a safe neutral or hidden result.</p>
+              <p class="trace-why">This is the policy boundary. A Phase describes the attack. A Decision describes what the interface may show.</p>
+            </article>
+            <aside class="trace-data" data-trace-data="4" hidden>
+              <span>Renderer-facing answer</span>
+              <pre class="payload">Decision {
+  <span class="key">state</span>: <span class="value">Active</span>,
+  <span class="key">response</span>: <span class="value">Parry</span>,
+  <span class="key">progress</span>: <span class="value">0.31</span>,
+  <span class="key">capture_source</span>: <span class="value">EventBatch</span>,
+  <span class="key">contact</span>: <span class="value">None</span>
+}</pre>
+            </aside>
+
+            <article class="trace-panel" id="trace-panel-5" role="tabpanel" aria-labelledby="trace-tab-5" data-trace-panel="5" hidden>
+              <span class="trace-owner">DX11 render callback</span>
+              <h3>ImGui submits the visible cue</h3>
+              <p>The render callback checks focus, freshness, visibility, and invalidation generation once more. It computes cue bounds and adds the rail, marker, label, and emblem to the current DirectX frame.</p>
+              <p class="trace-why">The render log proves that draw commands were submitted. It cannot prove that the monitor presented the pixels or that a deflect succeeded.</p>
+            </article>
+            <aside class="trace-data" data-trace-data="5" hidden>
+              <span>Frame record</span>
+              <pre class="payload">RenderSample {
+  <span class="key">status</span>: <span class="value">Drawn</span>,
+  <span class="key">label</span>: <span class="value">"PARRY"</span>,
+  <span class="key">bounds</span>: <span class="value">[x, y, w, h]</span>,
+  <span class="key">generation</span>: <span class="value">42</span>
+}
+
+<span class="comment">// Submitted to this frame</span></pre>
+            </aside>
+          </div>
+
+          <div class="trace-controls">
+            <button type="button" id="trace-prev" disabled>Previous step</button>
+            <span class="trace-status" id="trace-status">Step 1 of 6</span>
+            <button type="button" id="trace-next">Next step</button>
+          </div>
+        </div>
+
+        <p class="note"><strong>One rule explains the architecture.</strong> Each stage receives a narrower, safer answer than the stage before it. Raw memory becomes a validated target, then a classified phase, then a display decision.</p>
+      </section>
+
+      <section id="mental-model">
+        <div class="section-intro">
+          <h2>Four execution lanes share the work</h2>
+          <p>The DLL runs inside Sekiro, but its jobs do not all happen at the same time. Read each lane left to right. Arrows inside a lane show order. Shared objects carry results between lanes.</p>
+        </div>
+
+        <div class="system-map" aria-label="Runtime ownership map">
+          <div class="system-lane">
+            <strong>Startup thread</strong>
+            <div class="lane-actions">
+              <span class="lane-action">verify sekiro.exe</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">hash executable</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">install hooks</span>
+            </div>
+          </div>
+          <div class="system-lane">
+            <strong>Game thread</strong>
+            <div class="lane-actions">
+              <span class="lane-action">animation function runs</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">hook copies batch</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">original function continues</span>
+            </div>
+          </div>
+          <div class="system-lane">
+            <strong>Worker thread</strong>
+            <div class="lane-actions">
+              <span class="lane-action">validate lock</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">build Target</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">publish CueState</span>
+            </div>
+          </div>
+          <div class="system-lane">
+            <strong>Render thread</strong>
+            <div class="lane-actions">
+              <span class="lane-action">read CueState</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">make Decision</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">submit ImGui draw commands</span>
+            </div>
+          </div>
+          <div class="system-lane write-lane">
+            <strong>F11 side path</strong>
+            <div class="lane-actions">
+              <span class="lane-action">remember original speed</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">write slowed speed</span><span class="lane-arrow" aria-hidden="true">→</span>
+              <span class="lane-action">restore exact original</span>
+            </div>
+          </div>
+        </div>
+
+        <ul class="diagram-key" aria-label="Diagram key">
+          <li><span class="key-read"></span>Normal observation and drawing</li>
+          <li><span class="key-write"></span>Optional game-memory write</li>
+        </ul>
+
+        <p class="note"><strong>The main path reads.</strong> Only the F11 practice adapter writes game memory. It temporarily changes one enemy animation-speed value and restores the exact original. The HUD, classifier, and diagnostics cannot perform that write.</p>
+      </section>
+
+      <section id="rhythms">
+        <div class="section-intro">
+          <h2>Events, polls, and frames are different things</h2>
+          <p>The same 32 milliseconds can contain one animation event, four worker polls, and two rendered frames. They are independent schedules. The example timeline below shows why one does not replace another.</p>
+        </div>
+
+        <div class="clock-diagram" aria-label="Timeline comparing animation events, worker polls, and render frames">
+          <div class="clock-axis" aria-hidden="true">
+            <span>elapsed time</span>
+            <div><span>0 ms</span><span>8</span><span>16</span><span>24</span><span>32 ms</span></div>
+          </div>
+          <div class="clock-row">
+            <div class="clock-label"><strong>Animation hook</strong><span>when called</span></div>
+            <div class="clock-track">
+              <span class="tick event-tick" style="left: 34%" data-label="batch"></span>
+            </div>
+          </div>
+          <div class="clock-row">
+            <div class="clock-label"><strong>Worker</strong><span>about every 8 ms</span></div>
+            <div class="clock-track">
+              <span class="tick" style="left: 0%" data-label="poll"></span>
+              <span class="tick" style="left: 25%" data-label="poll"></span>
+              <span class="tick" style="left: 50%" data-label="poll"></span>
+              <span class="tick" style="left: 75%" data-label="poll"></span>
+              <span class="tick" style="left: 100%" data-label="poll"></span>
+            </div>
+          </div>
+          <div class="clock-row">
+            <div class="clock-label"><strong>DX11 render</strong><span>about every 16.7 ms at 60 fps</span></div>
+            <div class="clock-track">
+              <span class="tick frame-tick" style="left: 4%" data-label="frame"></span>
+              <span class="tick frame-tick" style="left: 56%" data-label="frame"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="clock-lesson">
+          <div><strong>The event captures timing</strong><p>The hook runs when Sekiro consumes a completed animation batch. It copies stable evidence and immediately returns control to the game.</p></div>
+          <div><strong>The worker builds context</strong><p>The next poll joins that evidence to the current lock, actor, camera, identity, config, and ownership checks.</p></div>
+          <div><strong>The frame displays the latest safe answer</strong><p>The next render may arrive before or after a worker poll. It uses published state and rejects data older than the freshness window.</p></div>
+        </div>
+
+        <div class="note"><strong>Why both a hook and polling?</strong> The hook supplies a precise animation-batch observation. Polling resolves everything around it. If the hook is active but has no fresh snapshot, the mod refuses to reuse an older polled animation.</div>
+      </section>
+
+      <section id="models">
+        <div class="section-intro">
+          <h2>Each model answers one narrower question</h2>
+          <p>The types form a chain. They do not all have equal jobs. Follow the arrows to see raw observation become a safe interface answer.</p>
+        </div>
+
+        <div class="data-journey" aria-label="Data transformation from animation sample to rendered cue">
+          <article class="journey-node">
+            <h3>What did we read?</h3>
+            <p><code>Animation</code> and <code>CaptureMetadata</code> preserve the move ID, clock, source, timestamps, and owner generation.</p>
+            <code>raw evidence</code>
+          </article>
+          <article class="journey-node">
+            <h3>Who does it belong to?</h3>
+            <p><code>Target</code> joins the sample to a validated enemy, position, facing, health, and camera.</p>
+            <code>trusted snapshot</code>
+          </article>
+          <article class="journey-node">
+            <h3>What kind of attack is it?</h3>
+            <p><code>Phase</code> matches the model, variation, animation, and current animation time to extracted attack data.</p>
+            <code>game fact</code>
+          </article>
+          <article class="journey-node">
+            <h3>What may the HUD show?</h3>
+            <p><code>Decision</code> applies alert policy and gives the renderer a state, response, progress, and reason.</p>
+            <code>UI answer</code>
+          </article>
+        </div>
+
+        <p class="note"><strong><code>CueState</code> is the handoff.</strong> The worker writes the newest live target and engine state. The renderer holds the mutex briefly, clones what it needs, and releases it before drawing.</p>
+
+        <details class="reference-group">
+          <summary>Inspect every Rust model and its fields</summary>
+          <div class="model-list">
+          <article class="model">
+            <h3><code>Animation</code></h3>
+            <div>
+              <p>One animation track sample. <code>id</code> names the move. <code>time</code> is the current animation clock. <code>previous</code> and <code>sequence</code> are retained for diagnostics. Runtime continuity does not trust them as attack identity.</p>
+              <div class="fields"><code>id</code><code>previous</code><code>time</code><code>sequence</code></div>
+            </div>
+          </article>
+
+          <article class="model">
+            <h3><code>CaptureMetadata</code></h3>
+            <div>
+              <p>Provenance for a sample. It records whether the animation came from the event batch or polling, when the read began and ended, when it was published, and which owner generation it belongs to.</p>
+              <div class="fields"><code>capture_id</code><code>observation_id</code><code>source</code><code>read_start</code><code>read_finished</code><code>published_at</code><code>owner_generation</code></div>
+            </div>
+          </article>
+
+          <article class="model">
+            <h3><code>Target</code></h3>
+            <div>
+              <p>The validated locked-enemy snapshot. It joins identity, animation, world geometry, player position, optional camera data, and any animation-read failure. Consumers do not need to repeat the pointer traversal.</p>
+              <div class="fields"><code>handle</code><code>model</code><code>npc_param</code><code>animation</code><code>position</code><code>facing</code><code>camera</code><code>captured_at</code></div>
+            </div>
+          </article>
+
+          <article class="model">
+            <h3><code>Phase</code></h3>
+            <div>
+              <p>A generated attack-table match for the current animation. The phase says what kind of attack is active next, where its activation window begins and ends, and which combo index it occupies.</p>
+              <div class="fields"><code>index</code><code>kind</code><code>start</code><code>end</code><code>previous_end</code><code>animation_time</code></div>
+            </div>
+          </article>
+
+          <article class="model">
+            <h3><code>Decision</code></h3>
+            <div>
+              <p>The renderer-facing answer. It combines a visual state, response label, phase progress, capture evidence, and optional legacy timing intervals. Default incoming mode leaves <code>press</code> and <code>contact</code> empty.</p>
+              <div class="fields"><code>state</code><code>response</code><code>phase</code><code>progress</code><code>reason</code><code>capture_source</code><code>press</code><code>contact</code></div>
+            </div>
+          </article>
+
+          <article class="model">
+            <h3><code>CueState</code></h3>
+            <div>
+              <p>The short shared critical section between the worker and renderer. It owns the newest <code>LiveCue</code>, the <code>Engine</code>, validated config, derived timing settings, active calibrations, generation, and practice status.</p>
+              <div class="fields"><code>live</code><code>engine</code><code>config</code><code>settings</code><code>profiles</code><code>generation</code><code>practice</code></div>
+            </div>
+          </article>
+
+          <article class="model">
+            <h3><code>practice::Snapshot</code></h3>
+            <div>
+              <p>A read-only report from the speed controller. It says whether practice is off, armed, active, unavailable, restoring, or paused by a conflicting external change.</p>
+              <div class="fields"><code>status</code><code>handle</code><code>model</code><code>animation_module</code><code>percent</code><code>original_bits</code><code>applied_bits</code></div>
+            </div>
+          </article>
+          </div>
+        </details>
+      </section>
+
+      <section id="frame">
+        <div class="section-intro">
+          <h2>What happens during one visible frame</h2>
+          <p>The renderer has a strict job. It reads the latest published answer, rejects unsafe state, submits geometry, and leaves file writing to the worker.</p>
+        </div>
+
+        <div class="sequence" aria-label="Sequence of work during one render frame">
+          <div class="sequence-step">
+            <div class="sequence-actor">Observer</div>
+            <div class="sequence-message"><strong>1. Begin a hidden RenderSample</strong><p>The frame counter advances. The default record assumes nothing will be drawn until every gate passes.</p></div>
+          </div>
+          <div class="sequence-step">
+            <div class="sequence-actor">Lifecycle</div>
+            <div class="sequence-message"><strong>2. Capture the invalidation generation</strong><p>Target loss, owner changes, focus loss, and visibility changes can make previous geometry unsafe.</p></div>
+          </div>
+          <div class="sequence-step">
+            <div class="sequence-actor">CueState</div>
+            <div class="sequence-message"><strong>3. Lock, copy, unlock</strong><p>The renderer clones the fresh target, settings, profiles, and practice status. It does not walk game memory or parse files while holding the mutex.</p></div>
+          </div>
+          <div class="sequence-step">
+            <div class="sequence-actor">Engine</div>
+            <div class="sequence-message"><strong>4. Produce a Decision</strong><p>Incoming mode classifies the phase directly. Legacy mode can estimate intervals only when the animation clock has a stable rate.</p></div>
+          </div>
+          <div class="sequence-step">
+            <div class="sequence-actor">Lifecycle</div>
+            <div class="sequence-message"><strong>5. Check the generation again</strong><p>If another thread invalidated the target during this frame, rendering stops before submitting stale geometry.</p></div>
+          </div>
+          <div class="sequence-step">
+            <div class="sequence-actor">ImGui</div>
+            <div class="sequence-message"><strong>6. Draw and queue the record</strong><p><code>cue_draw::draw</code> submits the rail, marker, label, and emblem. A bounded queue sends the record back to the worker for later CSV writing.</p></div>
+          </div>
+        </div>
+
+        <p class="note"><strong>The mutex is not the frame.</strong> It protects the handoff long enough to copy state. Layout, drawing, and disk logging happen after the renderer releases it.</p>
+      </section>
+
+      <section id="states">
+        <div class="section-intro">
+          <h2>The default HUD follows attack phases, not button timing</h2>
+          <p>The default incoming path uses the current animation phase directly. It shows what response the extracted game parameters support and whether that phase is still winding up or already active.</p>
+        </div>
+
+        <h3>Default incoming mode</h3>
+        <div class="state-lane" aria-label="Incoming mode attack timeline">
+          <div class="windup">
+            <strong>INCOMING</strong>
+            <span>The marker approaches the center gate. The label names the response.</span>
+          </div>
+          <div class="active">
+            <strong>ATTACK ACTIVE</strong>
+            <span>A parryable phase turns white and can show the red strike emblem. This is still animation time.</span>
+          </div>
+          <div class="after">
+            <strong>NEUTRAL</strong>
+            <span>The phase ended. The lock can remain fresh without an active attack cue.</span>
+          </div>
+        </div>
+
+        <table aria-label="Attack classification to HUD response">
+          <thead><tr><th>Raw kind</th><th>Response</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>Parryable</code></td><td>PARRY</td><td>The identified parameters permit deflection.</td></tr>
+            <tr><td><code>Grab</code></td><td>DODGE</td><td>The incoming phase is classified as a grab.</td></tr>
+            <tr><td><code>Sweep</code></td><td>JUMP</td><td>The incoming phase is a low sweep.</td></tr>
+            <tr><td><code>Thrust</code></td><td>MIKIRI or PARRY</td><td>The Mikiri preference chooses the hint. The classifier itself does not change.</td></tr>
+            <tr><td><code>Unparryable</code></td><td>NO PARRY</td><td>The known phase disables deflection, but the mod does not invent another response.</td></tr>
+            <tr><td><code>Unknown</code></td><td>UNKNOWN</td><td>A phase exists, but the available variants do not support one safe answer.</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top: 3.5rem">Optional legacy timing mode</h3>
+        <p style="max-width: var(--reading); color: var(--muted)">With <code>incoming_cues = false</code>, the engine estimates animation speed from progressing captures. It projects at most 25 ms, checks coarse reach, and can produce preparation, actionable, and expired states. A calibrated profile may add a contact proxy and preferred instant. Those values are estimates backed by profile evidence, not direct collision reads.</p>
+        <div class="legacy-lane" aria-label="Legacy timing states">
+          <div class="prepare">PREPARATION<br><span class="mono">READY</span></div>
+          <div class="action">ACTIONABLE<br><span class="mono">PARRY NOW</span></div>
+          <div class="expired">EXPIRED</div>
+        </div>
+
+        <p class="note"><strong>Freshness matters.</strong> A lock observation and an animation capture both expire after 50 ms. A fresh lock with stale animation can show neutral LOCKED. It cannot keep an old attack actionable.</p>
+      </section>
+
+      <section id="practice">
+        <div class="section-intro">
+          <h2>Practice mode shares facts, not HUD decisions</h2>
+          <p>F11 practice asks the raw classifier whether the current phase is eligible. It does not ask whether a PARRY or JUMP label is visible. This keeps alert preferences from changing gameplay speed.</p>
+        </div>
+
+        <div class="separation">
+          <article>
+            <h3>Alert path</h3>
+            <p><code>Target → Phase → Decision → cue_draw</code></p>
+            <p>Uses response filters, the Mikiri preference, HUD mode, colors, and layout.</p>
+          </article>
+          <div class="divider" aria-hidden="true">≠</div>
+          <article>
+            <h3>Practice path</h3>
+            <p><code>Target → Phase → eligible → Controller</code></p>
+            <p>Uses the F11 session toggle, focus, freshness, advancing capture, owner checks, and the configured speed factor.</p>
+          </article>
+        </div>
+
+        <div class="state-diagram-wrap">
+          <svg class="state-diagram" viewBox="0 0 920 390" role="img" aria-labelledby="practice-title practice-desc">
+            <title id="practice-title">Practice mode ownership and restoration state machine</title>
+            <desc id="practice-desc">F11 moves practice from off to armed. An eligible attack creates a lease, applies one slowed value, and later restores the exact original. A conflicting external write pauses the system.</desc>
+            <defs>
+              <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#7d837e"></path>
+              </marker>
+            </defs>
+
+            <path class="arrow" d="M130 90 H190"></path>
+            <path class="arrow" d="M310 90 H370"></path>
+            <path class="arrow arrow-write" d="M490 90 H550"></path>
+            <path class="arrow arrow-write" d="M670 90 H730"></path>
+            <path class="arrow" d="M790 135 V190 H610 V225"></path>
+            <path class="arrow" d="M550 270 H490"></path>
+            <path class="arrow" d="M370 270 H310"></path>
+            <path class="arrow" d="M610 315 V350 H70 V135"></path>
+            <path class="arrow" d="M610 135 V190 H790 V225"></path>
+            <path class="arrow" d="M730 270 H670"></path>
+
+            <text class="edge-label" x="145" y="77">press F11</text>
+            <text class="edge-label" x="322" y="77">eligible phase</text>
+            <text class="edge-label" x="500" y="77">save original</text>
+            <text class="edge-label" x="686" y="77">write once</text>
+            <text class="edge-label" x="628" y="184">attack or context ends</text>
+            <text class="edge-label" x="661" y="206">external value changed</text>
+            <text class="edge-label" x="680" y="258">retry later</text>
+            <text class="edge-label" x="497" y="258">write succeeds</text>
+            <text class="edge-label" x="315" y="258">release lease</text>
+
+            <rect class="node-box" x="10" y="45" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="70" y="78" text-anchor="middle">OFF</text>
+            <text class="node-copy" x="70" y="101" text-anchor="middle">no writes allowed</text>
+
+            <rect class="node-box" x="190" y="45" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="250" y="78" text-anchor="middle">ARMED</text>
+            <text class="node-copy" x="250" y="101" text-anchor="middle">wait for attack</text>
+
+            <rect class="node-box" x="370" y="45" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="430" y="78" text-anchor="middle">LEASED</text>
+            <text class="node-copy" x="430" y="101" text-anchor="middle">owner rechecked</text>
+
+            <rect class="node-active" x="550" y="45" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="610" y="78" text-anchor="middle">ORIGINAL SAVED</text>
+            <text class="node-copy" x="610" y="101" text-anchor="middle">exact f32 bits kept</text>
+
+            <rect class="node-risk" x="730" y="45" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="790" y="78" text-anchor="middle">SLOWED</text>
+            <text class="node-copy" x="790" y="101" text-anchor="middle">speed written once</text>
+
+            <rect class="node-risk" x="550" y="225" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="610" y="258" text-anchor="middle">RESTORING</text>
+            <text class="node-copy" x="610" y="281" text-anchor="middle">retry on failure</text>
+
+            <rect class="node-box" x="370" y="225" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="430" y="258" text-anchor="middle">RESTORED</text>
+            <text class="node-copy" x="430" y="281" text-anchor="middle">original bits back</text>
+
+            <rect class="node-box" x="190" y="225" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="250" y="258" text-anchor="middle">ARMED</text>
+            <text class="node-copy" x="250" y="281" text-anchor="middle">ready again</text>
+
+            <rect class="node-risk" x="730" y="225" width="120" height="90" rx="12"></rect>
+            <text class="node-title" x="790" y="258" text-anchor="middle">PAUSED</text>
+            <text class="node-copy" x="790" y="281" text-anchor="middle">external conflict</text>
+          </svg>
+        </div>
+
+        <ul class="diagram-key" aria-label="Practice state diagram key">
+          <li><span class="key-read"></span>Validated ownership state</li>
+          <li><span class="key-write"></span>Memory write or restoration</li>
+          <li><span class="key-stop"></span>Unsafe paths stop instead of overwriting</li>
+        </ul>
+
+        <details class="reference-group">
+          <summary>What makes an attack eligible, and what starts restoration?</summary>
+          <p>Parry, sweep, and thrust phases can qualify. Grabs, unknown phases, no-parry phases, stale samples, and frozen animation clocks stay at normal speed.</p>
+          <p>Attack end, focus loss, a hidden HUD, target switch, factor change, or F11 disarm starts restoration. Failed reads or writes remain in <code>RESTORING</code> for another worker tick. A conflicting external write moves practice to <code>PAUSED</code> instead of overwriting it.</p>
+        </details>
+      </section>
+
+      <section id="safety">
+        <div class="section-intro">
+          <h2>Most complexity exists to reject stale or ambiguous data</h2>
+          <p>A memory reader can be fast and still be wrong. This code rechecks identity, bounds work, and makes uncertainty visible instead of letting an old cue survive.</p>
+        </div>
+
+        <table aria-label="Runtime safety boundaries">
+          <thead><tr><th>Boundary</th><th>What it prevents</th><th>Code behavior</th></tr></thead>
+          <tbody>
+            <tr><td>Executable hash</td><td>Using researched offsets on another build</td><td>Reads and the event hook return unsupported before trusting offsets.</td></tr>
+            <tr><td>Function-byte hash</td><td>Detouring a changed game function</td><td>The hook checks the loaded bytes at the target address before MinHook installs.</td></tr>
+            <tr><td>Double reads</td><td>Publishing a structure that changed mid-read</td><td>Animation batches and effect lists are compared across two reads.</td></tr>
+            <tr><td>Owner generation</td><td>An old capture crossing a target or animation change</td><td>Loss, owner change, and animation failure increment the invalidation gate.</td></tr>
+            <tr><td>50 ms freshness</td><td>Displaying an old lock or attack</td><td><code>LiveCue</code> expires both lock and animation evidence.</td></tr>
+            <tr><td>Read budget</td><td>A pointer walk stalling the worker</td><td>Native memory reads stop after a 10 ms budget.</td></tr>
+            <tr><td>Bounded queues</td><td>Logging pressure growing without limit</td><td>Commands use 64 slots and render records use 512. Drops are counted.</td></tr>
+            <tr><td>Whole-file config validation</td><td>Half-applying a malformed edit</td><td>The worker keeps the last valid config if reload fails.</td></tr>
+            <tr><td>Private speed writer</td><td>HUD or diagnostic code writing game state</td><td>Only <code>windows/practice.rs</code> implements <code>SpeedMemory</code>.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="controls">
+        <div class="section-intro">
+          <h2>Controls enqueue work and never capture combat input</h2>
+          <p>The window-procedure hook accepts only fresh key-down messages for F6 through F11 while the game window is focused. It always returns <code>Continue</code>.</p>
+        </div>
+
+        <table aria-label="Keyboard controls">
+          <thead><tr><th>Key</th><th>Action</th><th>Persistence</th></tr></thead>
+          <tbody>
+            <tr><td>F6 / F7</td><td>Move the cue by 8 reference pixels</td><td>Saved to <code>cue.toml</code></td></tr>
+            <tr><td>F8</td><td>Show or hide the gameplay HUD. Hiding also disarms practice.</td><td>Saved</td></tr>
+            <tr><td>F9</td><td>Show or hide the research diagnostics panel</td><td>Saved</td></tr>
+            <tr><td>F10</td><td>Reset horizontal and vertical offsets</td><td>Saved</td></tr>
+            <tr><td>F11</td><td>Arm or disarm enemy-speed practice</td><td>Session only</td></tr>
+          </tbody>
+        </table>
+
+        <p class="note"><strong>Config flow.</strong> The worker checks <code>%LOCALAPPDATA%/SekiroDeflectObserver/cue.toml</code> once per second. The file is limited to 64 KiB, rejects unknown fields, validates every range, and saves hotkey changes through an atomic same-directory replace.</p>
+      </section>
+
+      <section id="logs">
+        <div class="section-intro">
+          <h2>The logs say what was observed, not what happened on screen</h2>
+          <p>The evidence files use careful names because a draw submission is not the same as a presented pixel, and an animation crossing is not the same as a collision.</p>
+        </div>
+
+        <table aria-label="Generated logs">
+          <thead><tr><th>File</th><th>Records</th><th>Important limit</th></tr></thead>
+          <tbody>
+            <tr><td><code>observer-&lt;pid&gt;.log</code></td><td>Startup, hashes, hook availability, config failures, and restoration warnings</td><td>Operational text log. It does not use the 16 MiB CSV cap.</td></tr>
+            <tr><td><code>*.cue.csv</code></td><td>Target reads, animation clocks, reader stages, and capture provenance</td><td>Activation estimate only</td></tr>
+            <tr><td><code>*.render.csv</code></td><td>Every queued frame decision and submitted cue bounds</td><td>Submission, not visible presentation</td></tr>
+            <tr><td><code>*.alerts.csv</code></td><td>Decision transitions plus a one-second heartbeat</td><td>Sparse by design</td></tr>
+            <tr><td><code>*.events.csv</code></td><td>Track starts, cancellations, and activation or deactivation crossings</td><td>Animation time, not contact</td></tr>
+            <tr><td><code>*.practice.csv</code></td><td>Practice controller transitions and original/applied speeds</td><td>Checked writes, not gameplay validation</td></tr>
+            <tr><td><code>*.samples.csv</code></td><td>Research effect 105010 observations</td><td>The effect is not proof of a successful deflect</td></tr>
+          </tbody>
+        </table>
+        <p style="max-width: var(--reading); color: var(--muted)">Each CSV stops growing at 16 MiB. Logging failure never enables a cue or practice write. The F9 panel reports logging and queue-drop status.</p>
+      </section>
+
+      <section id="source-map">
+        <div class="section-intro">
+          <h2>Start in the file that owns the fact you want to change</h2>
+          <p>The project separates capture, attack facts, alert policy, practice policy, and drawing. Keep new logic on the side of that boundary where its inputs are already trustworthy.</p>
+        </div>
+
+        <div class="source-map">
+          <div class="source-row"><a href="../../src/windows.rs">src/windows.rs</a><p>DLL entry, hook startup, hotkeys, and the per-frame render callback.</p></div>
+          <div class="source-row"><a href="../../src/windows/diagnostics.rs">src/windows/diagnostics.rs</a><p>The 8 ms worker, shared state, queues, config reload, and CSV orchestration.</p></div>
+          <div class="source-row"><a href="../../src/event_hook.rs">src/event_hook.rs</a><p>The animation-batch detour and fresh snapshot handoff.</p></div>
+          <div class="source-row"><a href="../../src/cue.rs">src/cue.rs</a><p>Pointer traversal, <code>Target</code>, camera projection, reach, and live freshness.</p></div>
+          <div class="source-row"><a href="../../src/attack.rs">src/attack.rs</a><p>Raw attack classification and NPC variation lookup.</p></div>
+          <div class="source-row"><a href="../../src/incoming.rs">src/incoming.rs</a><p>Default alert policy and response labels.</p></div>
+          <div class="source-row"><a href="../../src/timing.rs">src/timing.rs</a><p>Timing engine, continuity, rate estimation, legacy intervals, and pulses.</p></div>
+          <div class="source-row"><a href="../../src/attack_events.rs">src/attack_events.rs</a><p>Completed batch selection and diagnostic timeline crossings.</p></div>
+          <div class="source-row"><a href="../../src/practice.rs">src/practice.rs</a><p>Practice eligibility, ownership lease, apply, restore, and conflict policy.</p></div>
+          <div class="source-row"><a href="../../src/windows/practice.rs">src/windows/practice.rs</a><p>The only native adapter that can write the enemy speed field.</p></div>
+          <div class="source-row"><a href="../../src/windows/cue_draw.rs">src/windows/cue_draw.rs</a><p>HUD presentation, rail geometry, marker, emblem, labels, and button badge.</p></div>
+          <div class="source-row"><a href="../../src/layout.rs">src/layout.rs</a><p>Viewport fitting, safe margins, posture band, anchors, and complete cue bounds.</p></div>
+          <div class="source-row"><a href="../../src/config.rs">src/config.rs</a><p>Config schema, defaults, bounds, reload, migration, and atomic save.</p></div>
+          <div class="source-row"><a href="../../src/lifecycle.rs">src/lifecycle.rs</a><p>The atomic invalidation generation shared by the worker, hotkeys, and renderer.</p></div>
+          <div class="source-row"><a href="../../src/input.rs">src/input.rs</a><p>Fresh F6 through F11 key recognition. It never decides the resulting policy.</p></div>
+          <div class="source-row"><a href="../../src/incoming_attacks.rs">src/incoming_attacks.rs</a><p>Generated incoming-attack and NPC-variation tables. Regenerate them with <a href="../../scripts/generate-incoming-attacks.py">scripts/generate-incoming-attacks.py</a> instead of editing rows by hand.</p></div>
+          <div class="source-row"><a href="../../src/attack_timings.rs">src/attack_timings.rs</a><p>Generated legacy timing and response tables. Its generator is <a href="../../scripts/generate-attack-timings.py">scripts/generate-attack-timings.py</a>.</p></div>
+          <div class="source-row"><a href="../research/data/incoming-coverage.json">docs/incoming-coverage.json</a><p>Exact source evidence for generated incoming classifications. Legacy move evidence lives in <a href="../research/timing-coverage.md">docs/boss-move-coverage.md</a>.</p></div>
+          <div class="source-row"><a href="../../src/reader.rs">src/reader.rs</a><p>The separate effect-105010 research reader used by diagnostics.</p></div>
+          <div class="source-row"><a href="../../src/samples.rs">src/samples.rs</a><p>Bounded diagnostic effect history and 100 ms sample freshness.</p></div>
+        </div>
+      </section>
+
+      <section id="glossary">
+        <div class="section-intro">
+          <h2>A short glossary for your next code-reading pass</h2>
+          <p>These terms recur across the source and tests.</p>
+        </div>
+
+        <details open>
+          <summary>What do DLL, DirectX 11, and ImGui mean?</summary>
+          <p>A DLL is a compiled library that the loader places inside Sekiro's process. DirectX 11 is the graphics API the game uses to submit frames. ImGui is the interface library the mod uses to add its own draw commands to those frames.</p>
+        </details>
+        <details>
+          <summary>What is a hook?</summary>
+          <p>A hook redirects a game or graphics function through mod code. This project uses hudhook for DX11 rendering and MinHook for one researched animation consumer. The mod calls the original animation function after it captures the batch.</p>
+        </details>
+        <details>
+          <summary>What is a frame?</summary>
+          <p>A frame is one call to <code>Observer::render</code> from the DX11 overlay loop. Game updates and worker polls do not have to line up one-for-one with rendered frames.</p>
+        </details>
+        <details>
+          <summary>What are pointer chains, mutexes, generations, and monotonic time?</summary>
+          <p>A pointer chain follows addresses stored inside game objects until the reader reaches the player or enemy data it needs. A mutex lets either the worker or renderer use shared cue state for a short time, but not both at once. A generation is a number that changes when old state becomes unsafe, so the renderer can reject it. Monotonic time is a process-local clock that only moves forward and is safe for measuring age.</p>
+        </details>
+        <details>
+          <summary>What is an event in this project?</summary>
+          <p>The word has two nearby meanings. The hook observes a completed animation batch. <code>attack_events::Tracker</code> then records when a continuous animation clock crosses known activation and deactivation times. Neither meaning implies damage or a successful deflect.</p>
+        </details>
+        <details>
+          <summary>What is a model ID?</summary>
+          <p>A model ID identifies an enemy family, such as <code>1550</code> for code displayed as <code>c1550</code>. <code>npc_param</code> can select a more specific behavior variation within the same model.</p>
+        </details>
+        <details>
+          <summary>What is an occurrence?</summary>
+          <p>The timing engine increments <code>occurrence</code> whenever continuity breaks. A target, owner, animation, backwards clock, or large timestamp gap can start a new occurrence. The raw ring <code>sequence</code> is not trusted as attack identity.</p>
+        </details>
+        <details>
+          <summary>Why are there two freshness windows?</summary>
+          <p>The main cue path uses 50 ms for lock and animation evidence. The separate effect-research history uses 100 ms. The two systems answer different questions and do not authorize each other.</p>
+        </details>
+      </section>
+
+      <footer class="closing">
+        <h2>The safest way to extend the mod</h2>
+        <p>First decide whether the new fact belongs to capture, raw attack classification, alert presentation, practice eligibility, or drawing. Add it at that boundary, then prove it with the matching regression suite. Avoid making the HUD decide game facts or making a memory writer depend on visible labels.</p>
+        <p class="mono">Source basis: repository state for version 0.12.1-preview.</p>
+      </footer>
+    </main>
+  </div>
+  <script>
+    (() => {
+      const tabs = [...document.querySelectorAll('[data-trace-step]')];
+      const panels = [...document.querySelectorAll('[data-trace-panel]')];
+      const dataViews = [...document.querySelectorAll('[data-trace-data]')];
+      const previous = document.querySelector('#trace-prev');
+      const next = document.querySelector('#trace-next');
+      const status = document.querySelector('#trace-status');
+      let activeStep = 0;
+
+      const showStep = (step, moveFocus = false) => {
+        activeStep = Math.max(0, Math.min(step, tabs.length - 1));
+
+        tabs.forEach((tab, index) => {
+          const active = index === activeStep;
+          tab.setAttribute('aria-selected', String(active));
+          tab.tabIndex = active ? 0 : -1;
+          if (active && moveFocus) tab.focus();
+        });
+
+        panels.forEach((panel, index) => { panel.hidden = index !== activeStep; });
+        dataViews.forEach((view, index) => { view.hidden = index !== activeStep; });
+        previous.disabled = activeStep === 0;
+        next.disabled = activeStep === tabs.length - 1;
+        status.textContent = `Step ${activeStep + 1} of ${tabs.length}`;
+      };
+
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => showStep(index));
+        tab.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            showStep((index + 1) % tabs.length, true);
+          }
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            showStep((index - 1 + tabs.length) % tabs.length, true);
+          }
+          if (event.key === 'Home') {
+            event.preventDefault();
+            showStep(0, true);
+          }
+          if (event.key === 'End') {
+            event.preventDefault();
+            showStep(tabs.length - 1, true);
+          }
+        });
+      });
+
+      previous.addEventListener('click', () => showStep(activeStep - 1));
+      next.addEventListener('click', () => showStep(activeStep + 1));
+      showStep(0);
+    })();
+  </script>
+</body>
+</html>

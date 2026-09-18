@@ -12,7 +12,10 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUTS = ('docs/boss-move-phases.csv', 'docs/boss-move-coverage.md')
+OUTPUTS = (
+    'docs/research/data/boss-move-phases.csv',
+    'docs/research/timing-coverage.md',
+)
 
 
 def section(source, name):
@@ -64,9 +67,10 @@ def build_outputs(root=ROOT):
     source_bytes = source_path.read_bytes()
     source = source_bytes.decode('utf-8').replace('\r\n', '\n')
     attacks, responses, specials = parse_tables(source)
-    enemy = json.loads((root / 'docs/enemy-coverage.json').read_text(encoding='utf-8'))
+    enemy = json.loads(
+        (root / 'docs/research/data/enemy-coverage.json').read_text(encoding='utf-8'))
     response_report = json.loads(
-        (root / 'docs/response-coverage.json').read_text(encoding='utf-8'))
+        (root / 'docs/research/data/response-coverage.json').read_text(encoding='utf-8'))
 
     archives = enemy['coverage']
     archive_by_model = {row['model']: row for row in archives}
@@ -103,7 +107,7 @@ def build_outputs(root=ROOT):
 
         attack_ids = ''
         references = [
-            'src/attack_timings.rs', 'docs/enemy-coverage.json',
+            'src/attack_timings.rs', 'docs/research/data/enemy-coverage.json',
             'scripts/generate-attack-timings.py', 'scripts/attack_responses.py',
         ]
         if response in ('dodge', 'jump'):
@@ -114,8 +118,9 @@ def build_outputs(root=ROOT):
             used_evidence.add(key_with_response)
             attack_ids = ';'.join(str(value) for value in phase['attack_params'])
             references = [
-                'src/attack_timings.rs', 'docs/enemy-coverage.json',
-                'docs/response-coverage.json', 'scripts/generate-attack-timings.py',
+                'src/attack_timings.rs', 'docs/research/data/enemy-coverage.json',
+                'docs/research/data/response-coverage.json',
+                'scripts/generate-attack-timings.py',
                 'scripts/attack_responses.py',
             ]
 
@@ -181,12 +186,12 @@ This is the checked-in runtime table inventory, not a claim of complete boss
 support. Run `python scripts/update-move-coverage.py --check` to verify that this
 summary and the phase ledger still match the exact generated tables.
 
-The full [phase ledger](boss-move-phases.csv) preserves all {len(attacks):,} exact phase
+The full [phase ledger](data/boss-move-phases.csv) preserves all {len(attacks):,} exact phase
 records: model IDs, animation IDs, zero-based phase ordinals, activation/deactivation boundary
 strings from Rust, current response classifications, source JSON hashes and
 available attack-parameter references. Boundaries are animation seconds; the
 Rust literals are f32 approximations. Original extraction precision is retained
-in [response evidence](response-coverage.json) for mapped dodge/jump phases.
+in [response evidence](data/response-coverage.json) for mapped dodge/jump phases.
 Animation variants and combo phases are not unique human moves. No human move
 names, calibration results or success percentages were invented.
 
@@ -208,11 +213,12 @@ overlap other inventory and are not extra supported moves. An extracted phase
 with activation at zero can have no usable advance interval; a row is not a
 guarantee of an actionable cue.
 
-Sources: [generated runtime tables](../src/attack_timings.rs),
-[model/source hashes](enemy-coverage.json), [response/source evidence](response-coverage.json),
-[generator](../scripts/generate-attack-timings.py),
-[classifier](../scripts/attack_responses.py) and
-[coverage generator](../scripts/update-move-coverage.py).
+Sources: [generated runtime tables](../../src/attack_timings.rs),
+[model/source hashes](data/enemy-coverage.json),
+[response/source evidence](data/response-coverage.json),
+[generator](../../scripts/generate-attack-timings.py),
+[classifier](../../scripts/attack_responses.py) and
+[coverage generator](../../scripts/update-move-coverage.py).
 Generated data SHA-256 at audit:
 `{data_hash}`.
 The offline parameter join does not prove runtime behavior-variation selection.
@@ -270,16 +276,16 @@ and measurement resolution. A draw call, TAE crossing or effect 105010 alone is
 not a successful deflect. There are no complete records to promote in this audit.
 
 The latest reviewed 0.7.0 log has 83 parry **submissions**, not 83 deflects.
-Historical [0.6 evidence](validation-0.6.md) retains its original scope. No new
+Historical [0.6 evidence](../archive/validation/validation-0.6.md) retains its original scope. No new
 gameplay acceptance criterion is complete.
 
 Next validation order: soldier baseline, Ogre track regression, selected Ape
 responses, then representative supported boss combos. Record each run with the
-[trial template](../tests/compatibility/cue-trial-template.md).
+[trial template](../../tests/compatibility/cue-trial-template.md).
 """
     return {
-        'docs/boss-move-phases.csv': csv_buffer.getvalue(),
-        'docs/boss-move-coverage.md': document,
+        'docs/research/data/boss-move-phases.csv': csv_buffer.getvalue(),
+        'docs/research/timing-coverage.md': document,
     }
 
 
@@ -303,7 +309,7 @@ def main():
         return 1
     counts = collections.Counter(
         row['response'] for row in csv.DictReader(
-            io.StringIO(outputs['docs/boss-move-phases.csv'])))
+            io.StringIO(outputs['docs/research/data/boss-move-phases.csv'])))
     print(json.dumps({
         'phases': sum(counts.values()), 'parry': counts['parry'],
         'dodge': counts['dodge'], 'jump': counts['jump'],

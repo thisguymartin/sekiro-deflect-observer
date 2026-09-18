@@ -1,8 +1,8 @@
 # Cheat Engine research prototype
 
-The handover claimed an existing V0.1 prototype, but that claim is unconfirmed. The user has never had the table or Lua files. The native reader is being developed from [public layout research](../../docs/reader-research.md). No earlier prototype is required. The import checklist below applies only if independently sourced research files become available later.
+The handover claimed an existing V0.1 prototype, but that claim is unconfirmed. The user has never had the table or Lua files. The native reader is being developed from [public layout research](../../docs/research/reader/effect-reader.md). No earlier prototype is required. The import checklist below applies only if independently sourced research files become available later.
 
-This prototype is optional. The native proof of concept has its own [Windows build and run instructions](../../docs/windows.md) and requires no files from this directory.
+This prototype is optional. The native observer has its own [Windows build instructions](../../docs/development/build.md) and requires no files from this directory.
 
 ## Import the prototype
 
@@ -11,7 +11,7 @@ This prototype is optional. The native proof of concept has its own [Windows bui
 3. Record any third-party code and its license before publishing the files.
 4. Inspect the startup and shutdown paths before running the table.
 5. Replace the missing entries below with instructions verified against those files.
-6. Follow [Test the research prototype](../../docs/testing.md).
+6. Follow [Test the research prototype](../../docs/archive/0.6-beta/prototype-testing.md).
 
 ## Required operating instructions
 

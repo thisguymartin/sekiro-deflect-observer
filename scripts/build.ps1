@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 if ($env:OS -ne 'Windows_NT') {
-    throw 'Run this script on Windows x64. See docs/windows.md for prerequisites.'
+    throw 'Run this script on Windows x64. See docs/development/build.md for prerequisites.'
 }
 if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
     throw 'Cargo is missing. Install Rust with rustup, then open a new terminal.'

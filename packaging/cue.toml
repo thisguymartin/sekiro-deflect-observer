@@ -56,7 +56,7 @@ diagnostics = false        # F9 toggles and persists this value
 diagnostic_logging = true
 
 # Calibrated profiles are opt-in. Remove this line before adding [[profiles]]
-# tables as described in docs/configuration.md.
+# tables as described in docs/users/configuration.md.
 profiles = []
 
 [colors]

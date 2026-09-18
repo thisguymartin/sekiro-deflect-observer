@@ -24,7 +24,8 @@ class TimingTests(unittest.TestCase):
         coverage = importlib.util.module_from_spec(coverage_spec)
         coverage_spec.loader.exec_module(coverage)
         outputs = coverage.build_outputs(Path(__file__).resolve().parent.parent)
-        rows = list(csv.DictReader(io.StringIO(outputs['docs/boss-move-phases.csv'])))
+        rows = list(csv.DictReader(io.StringIO(
+            outputs['docs/research/data/boss-move-phases.csv'])))
         self.assertEqual(len(rows), 2161)
         self.assertEqual(
             collections.Counter(row['response'] for row in rows),
@@ -33,8 +34,8 @@ class TimingTests(unittest.TestCase):
         self.assertTrue(all(row['calibrated'] == 'false' for row in rows))
         self.assertTrue(all(row['gameplay_validated'] == 'false' for row in rows))
         self.assertIn(
-            '88fe0e54cd20834cb17582bba3d4637da650ed3f2ff4394af9d5da9b16ba1d71',
-            outputs['docs/boss-move-coverage.md'],
+            'e428d48ab2e7bb6e99e6687362506dd589b585c0bfdda130a9ec53b2911aa987',
+            outputs['docs/research/timing-coverage.md'],
         )
 
     def test_cycle_and_missing_source_are_rejected(self):

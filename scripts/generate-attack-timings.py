@@ -119,7 +119,7 @@ def main():
     if not coverage or not entries:
         raise ValueError('No enemy timelines; refusing to erase generated data')
     lines = ["//! Generated activation estimates. Contact and deflectability remain unverified.",
-             "//! See docs/enemy-coverage.json and docs/cue-preview.md.",
+             "//! See docs/research/data/enemy-coverage.json and docs/gameplay/legacy-timing.md.",
              "#[allow(clippy::excessive_precision)]",
              "pub const ATTACKS: &[(i32, i32, f32, f32, bool)] = &["]
     for model, animation_id, start, end, green in sorted(set(entries)):
@@ -138,12 +138,14 @@ def main():
     report = dict(schema_version=2, dodge_phases=sum(a[4]==1 for a in actions), jump_phases=sum(a[4]==2 for a in actions), special_animations=len(set(specials)), archives=len(coverage), models_with_phases=sum(c.get("phases",0)>0 for c in coverage),
                   models_with_green=sum(c.get("green_phases",0)>0 for c in coverage),
                   phases=len(set(entries)), green_phases=sum(e[4] for e in set(entries)), coverage=coverage)
-    (ROOT / "docs/enemy-coverage.json").write_text(json.dumps(report, indent=2)+"\n", encoding="utf-8")
+    (ROOT / "docs/research/data/enemy-coverage.json").write_text(
+        json.dumps(report, indent=2)+"\n", encoding="utf-8")
     evidence=dict(parameter_sources=json.loads((args.input_directory/'attack-param-sources.json').read_text()),
         attack_names_sha256=hashlib.sha256((ROOT/'dist/game-analysis/references/SDT.AtkParam.names.txt').read_bytes()).hexdigest(),
         interpretation='Response classification from parameters and attack names; timing and runtime variation selection need gameplay validation.',
         phases=action_evidence)
-    (ROOT / 'docs/response-coverage.json').write_text(json.dumps(evidence,indent=2)+'\n')
+    (ROOT / 'docs/research/data/response-coverage.json').write_text(
+        json.dumps(evidence,indent=2)+'\n')
     print(json.dumps({k:v for k,v in report.items() if k!="coverage"}))
 
 if __name__ == "__main__":

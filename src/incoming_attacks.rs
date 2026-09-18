@@ -1,5 +1,5 @@
 //! Generated incoming melee classifications, not contact or press windows.
-//! See docs/incoming-coverage.json for exact parameter/source evidence.
+//! See docs/research/data/incoming-coverage.json for exact parameter/source evidence.
 //! Variation -1 is the conservative fallback when NPC identity is unavailable.
 #[allow(clippy::excessive_precision)]
 pub const ATTACKS: &[(i32, i32, i32, f32, f32, u8)] = &[

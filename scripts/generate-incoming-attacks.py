@@ -59,7 +59,7 @@ def generate(directory):
     all_records = sorted(records + variant_records, key=lambda row: (
         row['model'], row['variation'], row['animation'], row['start'], row['end']))
     lines = ['//! Generated incoming melee classifications, not contact or press windows.',
-             '//! See docs/incoming-coverage.json for exact parameter/source evidence.',
+             '//! See docs/research/data/incoming-coverage.json for exact parameter/source evidence.',
              '//! Variation -1 is the conservative fallback when NPC identity is unavailable.',
              '#[allow(clippy::excessive_precision)]',
              'pub const ATTACKS: &[(i32, i32, i32, f32, f32, u8)] = &[']
@@ -100,7 +100,9 @@ def main():
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     source, evidence, report = generate(args.input_directory)
-    for name, content in [('src/incoming_attacks.rs', source), ('docs/incoming-coverage.json', evidence)]:
+    for name, content in [
+            ('src/incoming_attacks.rs', source),
+            ('docs/research/data/incoming-coverage.json', evidence)]:
         path = ROOT / name
         if args.check:
             if path.read_text(encoding='utf-8') != content:
