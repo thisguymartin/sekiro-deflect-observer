@@ -37,7 +37,7 @@ Sources: [generated runtime tables](../src/attack_timings.rs),
 [classifier](../scripts/attack_responses.py) and
 [coverage generator](../scripts/update-move-coverage.py).
 Generated data SHA-256 at audit:
-`3d0c108cb3412fa91f43da0f08a819cd12d792431fc027f0c132854dc0aded3d`.
+`88fe0e54cd20834cb17582bba3d4637da650ed3f2ff4394af9d5da9b16ba1d71`.
 The offline parameter join does not prove runtime behavior-variation selection.
 The ledger does not manufacture missing per-parry parameter provenance: those
 rows retain the exact timeline source hash and generator/classifier references;
@@ -54,7 +54,7 @@ remain excluded from green/parry eligibility by the broader phase classifier.
 | Encounter or requested form | Exact model evidence | Current status / missing evidence |
 | --- | --- | --- |
 | Ordinary soldier baseline | c1010 in historical capture and current log | Extracted/classified estimate; no complete press/contact/outcome trial; validate first |
-| General Naomori Kawarada | c1020 in [recording review](boss-review-2026-09-16.md) | Shared model/behavior variations unresolved; clip does not validate all c1020 actors |
+| General Naomori Kawarada | c1020 in an earlier local recording | Shared model/behavior variations unresolved; clip does not validate all c1020 actors |
 | Chained Ogre | c5020; 26 phases, 6 parry, 5 dodge | Historical auxiliary-40000 selection failure; corrected current-batch selector has synthetic tests, new live timing trial required |
 | Guardian Ape encounter | c5100; 93 phases, 4 parry, 1 dodge, 4 jump | Selected source-based mappings; no complete contact/press calibration |
 | Guardian Ape sword/headless form | c5100 includes 100003xxx mappings; exact runtime form applicability unvalidated | Requested form remains unresolved; animation bank alone is not form validation |
@@ -170,12 +170,10 @@ display mode, game modifiers and links to original logs/video. State uncertainty
 and measurement resolution. A draw call, TAE crossing or effect 105010 alone is
 not a successful deflect. There are no complete records to promote in this audit.
 
-The latest reviewed 0.7.0 log has 83 parry **submissions**, not 83 deflects. See
-[the investigation](timing-investigation-2026-09-16.md) for identities and limits.
-Historical [0.6 evidence](validation-0.6.md), [0.6.3 visuals](validation-0.6.3.md),
-[0.6.4 viewport work](validation-0.6.4.md) and [0.7.0 hook tests](validation-0.7.0.md)
-retain their original scopes. No new gameplay acceptance criterion is complete.
+The latest reviewed 0.7.0 log has 83 parry **submissions**, not 83 deflects.
+Historical [0.6 evidence](validation-0.6.md) retains its original scope. No new
+gameplay acceptance criterion is complete.
 
 Next validation order: soldier baseline, Ogre track regression, selected Ape
-responses, then representative supported boss combos. [Work status](WORK-STATUS.md)
-tracks live validation and remaining evidence work.
+responses, then representative supported boss combos. Record each run with the
+[trial template](../tests/compatibility/cue-trial-template.md).

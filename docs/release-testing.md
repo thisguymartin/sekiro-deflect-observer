@@ -83,9 +83,9 @@ Leave each item unchecked until a reviewer can follow its evidence link.
 
 This checklist is a project release gate, not a summary of current platform policies. Publishing a pre-release does not make an untested package a validated mod.
 
-## 0.8.0 acceptance evidence
+## Record acceptance evidence
 
-Use the stable IDs in [WORK-STATUS](WORK-STATUS.md) and the
+Use the stable IDs in the
 [defensive cue trial template](../tests/compatibility/cue-trial-template.md).
 Record the loaded DLL hash, executable/data hashes, target model/animation/phase,
 original capture time, sample age, animation clock and render timestamp. Record

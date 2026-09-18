@@ -45,8 +45,8 @@ drop-in loader. The normal build command creates the me3 package.
 To repackage the tested drop-in release, retain `dist/drop-in-research`, the
 original 0.6.3 ZIP, and its extracted `Mods/SekiroDeflectObserver-0.6.3-preview`
 folder for the smoke check. Then run `scripts/test-asi-loader.ps1` followed by
-`scripts/package-drop-in.py` in a separate restore folder. See the guide's
-[complete restore steps](windows.md#reproduce-the-existing-drop-in-zip).
+`scripts/package-drop-in.py` in a separate restore folder. The script validates
+the preserved inputs and refuses to overwrite an existing output.
 The packaging script refuses to replace an existing archive and requires the
 pinned binary hashes. The loader URL uses a moving upstream tag: a future
 download may differ and must not silently replace the pinned binary.

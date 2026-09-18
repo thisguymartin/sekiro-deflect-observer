@@ -33,7 +33,7 @@ class TimingTests(unittest.TestCase):
         self.assertTrue(all(row['calibrated'] == 'false' for row in rows))
         self.assertTrue(all(row['gameplay_validated'] == 'false' for row in rows))
         self.assertIn(
-            '3d0c108cb3412fa91f43da0f08a819cd12d792431fc027f0c132854dc0aded3d',
+            '88fe0e54cd20834cb17582bba3d4637da650ed3f2ff4394af9d5da9b16ba1d71',
             outputs['docs/boss-move-coverage.md'],
         )
 

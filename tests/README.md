@@ -54,7 +54,7 @@ exercises the vendored production DX11 backend on a windowless WARP device.
 It checks that host bindings and pixels outside the cue survive repeated and
 hidden frames on UNORM and sRGB targets. It reproduced the upstream 0.9.2
 render-target leak before the deferred-context fix. See
-[0.9.1 validation](../docs/validation-0.9.1.md) for the live-comparison limit.
+[current validation](../docs/validation-0.12.1.md) for the live-comparison limit.
 
 When a native implementation exists, test these behaviors through its actual settings and renderer boundaries:
 

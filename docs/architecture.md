@@ -6,7 +6,7 @@ private deferred context and submitted with `ExecuteCommandList(..., TRUE)`;
 the D3D runtime restores host context state. Empty draw data does no GPU work.
 Partial command lists are discarded on error. Texture updates touch only
 renderer-owned resources. The old incomplete manual state backup is removed.
-See `tests/dx11-render-isolation.rs` and `docs/validation-0.9.1.md`.
+See `tests/dx11-render-isolation.rs` and [current validation](validation-0.12.1.md).
 
 The default alert path is `Engine::incoming` -> `src/incoming.rs` ->
 `src/attack.rs`, using `src/incoming_attacks.rs` and the exact evidence in
@@ -126,13 +126,13 @@ freshness; effect 105010 is not proof of successful deflection.
 
 ## API evidence
 
-Context7 is not exposed in this environment. Dependency APIs were checked against
-locked upstream source/documentation for serde 1.0.195, toml 0.8.8 and imgui 0.12.
+Dependency APIs were checked against locked upstream source and documentation for
+serde 1.0.195, toml 0.8.8, and imgui 0.12.
 Win32 contracts were checked against official Microsoft documentation for
 [GetModuleFileNameW](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew),
 [GetWindowThreadProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowthreadprocessid)
 and [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw).
 
 Automated checks and renderer images are synthetic evidence. Live timing,
-menu/loading behavior, actual posture spacing and accepted defensive outcomes
-remain separate tasks in [WORK-STATUS](WORK-STATUS.md).
+menu and loading behavior, actual posture spacing, and accepted defensive
+outcomes still require the [gameplay checklist](../tests/manual/gameplay-checklist.md).

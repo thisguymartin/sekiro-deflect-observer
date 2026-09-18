@@ -93,5 +93,5 @@ profile; an independently installed ASI observer would still need removal.
 
 Source, configuration details, coverage and open acceptance checks:
 https://github.com/thisguymartin/sekiro-deflect-observer
-See docs/WORK-STATUS.md, docs/configuration.md, docs/incoming-attacks.md and
+See docs/validation-0.12.1.md, docs/configuration.md, docs/incoming-attacks.md and
 LICENSE / THIRD-PARTY-NOTICES.txt. This package is not a validated gameplay release.

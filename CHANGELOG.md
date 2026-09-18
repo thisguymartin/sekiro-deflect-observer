@@ -99,8 +99,7 @@
   still require valid timing and reach. Show neutral WATCH for unverified phases.
 - Migrate untouched 0.8.0 layout defaults atomically while preserving customized
   settings. Add placement, lock feedback, reach and migration regression checks.
-- Windows tests and synthetic render checks do not establish gameplay timing;
-  see docs/validation-0.8.1.md for exact evidence and the remaining live check.
+- Windows tests and synthetic render checks do not establish gameplay timing.
 
 ## 0.8.0-preview - 2026-09-16 (local research candidate)
 

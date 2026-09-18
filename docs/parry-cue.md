@@ -13,9 +13,8 @@ produce retaliation or attack-back guidance. No combat rules or inputs change.
 
 ## Evidence and reproduction
 
-[The timing investigation](timing-investigation-2026-09-16.md) records the audited
-baseline, actual newer HEAD, old DLL/game/log hashes and the chain from lock to
-render. Three clearly synthetic regressions isolate defects before their fixes:
+The regression suite records three synthetic cases that isolate defects before
+their fixes:
 
 - T1-A: c1010 / animation 3000 captured at animation 0.650 s, then drawn 20 ms
   later at 1x. Activation is 0.666666687 s. The old sampled clock could still show

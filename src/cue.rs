@@ -107,6 +107,7 @@ pub fn animation_for_model(
     m: &impl Memory,
     module: usize,
     model: i32,
+    npc_param: Option<i32>,
 ) -> Result<Animation, ReadError> {
     let bounds = bytes::<8>(m, module, 0xe8)?;
     let head = i32::from_le_bytes(bounds[..4].try_into().unwrap());
@@ -122,26 +123,33 @@ pub fn animation_for_model(
         time: 0.0,
         sequence: 0,
     };
-    let mut selected: Option<Animation> = None;
+    let catalog = crate::attack::Catalog::new(model, npc_param);
+    let mut selected: Option<(crate::attack::AnimationPriority, Animation)> = None;
+    let mut ambiguous = false;
     for step in 0..count {
         let slot = 0x20 + ((begin as usize + step) % 10) * 0x14;
         let raw = bytes::<20>(m, module, slot)?;
         let frame = decode_animation(raw)?;
         records.push((slot, raw));
         latest = frame;
-        let key = (model, frame.id);
-        let relevant = crate::attack_timings::ATTACKS
-            .binary_search_by_key(&key, |a| (a.0, a.1))
-            .is_ok()
-            || crate::attack_timings::SPECIALS
-                .binary_search_by_key(&key, |a| (a.0, a.1))
-                .is_ok();
-        if relevant {
-            if selected.is_some_and(|prior| prior.id != frame.id) {
-                // Blend/competing attacks need more than a guessed priority.
-                return Err(ReadError::InvalidAnimation);
+        let priority = catalog.priority(frame.id);
+        if priority == crate::attack::AnimationPriority::Unmapped {
+            continue;
+        }
+        match selected {
+            None => {
+                selected = Some((priority, frame));
+                ambiguous = false;
             }
-            selected = Some(frame);
+            Some((current, _)) if priority > current => {
+                selected = Some((priority, frame));
+                ambiguous = false;
+            }
+            Some((current, prior)) if priority == current => {
+                ambiguous |= prior.id != frame.id;
+                selected = Some((priority, frame));
+            }
+            Some(_) => {}
         }
     }
     // Recheck bytes as well as indices: the ring could wrap during a read.
@@ -153,7 +161,11 @@ pub fn animation_for_model(
     if bytes::<8>(m, module, 0xe8)? != bounds {
         return Err(ReadError::ChangedDuringRead);
     }
-    Ok(selected.unwrap_or(latest))
+    if ambiguous {
+        Err(ReadError::InvalidAnimation)
+    } else {
+        Ok(selected.map_or(latest, |(_, frame)| frame))
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -367,9 +379,10 @@ pub fn observe_traced(
         let npc = integer(m, resource, 0x628).ok()?;
         crate::attack::npc_variation(model, npc).map(|_| (resource, npc))
     });
-    let mut frame = animation_for_model(m, animation_module, model);
+    let npc_param = npc_identity.map(|(_, npc)| npc);
+    let mut frame = animation_for_model(m, animation_module, model, npc_param);
     if frame == Err(ReadError::ChangedDuringRead) {
-        frame = animation_for_model(m, animation_module, model);
+        frame = animation_for_model(m, animation_module, model, npc_param);
     }
     // Keep a freshly resolved lock visible if only its animation is unavailable.
     // There is no history fallback and no green cue for a failed animation read.
@@ -455,7 +468,7 @@ pub fn observe_traced(
         animation_module,
         handle,
         model,
-        npc_param: npc_identity.map(|(_, npc)| npc),
+        npc_param,
         animation,
         position,
         anchor,
@@ -1239,14 +1252,17 @@ mod tests {
             ring_frame(&mut f, begin as usize, 100003005, 0.45);
             ring_frame(&mut f, ((head + 9) % 10) as usize, 40000, 2.7);
             assert_eq!(animation(&f, 0x20000).unwrap().id, 40000);
-            let selected = animation_for_model(&f, 0x20000, 5020).unwrap();
+            let selected = animation_for_model(&f, 0x20000, 5020, None).unwrap();
             assert_eq!(selected.id, 100003005);
             assert_eq!(selected.time, 0.45);
             // The previous attack remains in the ring but is outside this batch.
             f.int(0x200ec, (head + 9) % 10);
-            assert_eq!(animation_for_model(&f, 0x20000, 5020).unwrap().id, 40000);
+            assert_eq!(
+                animation_for_model(&f, 0x20000, 5020, None).unwrap().id,
+                40000
+            );
             f.int(0x200ec, head);
-            assert_eq!(animation_for_model(&f, 0x20000, 5020).unwrap().id, -1);
+            assert_eq!(animation_for_model(&f, 0x20000, 5020, None).unwrap().id, -1);
         }
     }
     #[test]
@@ -1257,27 +1273,41 @@ mod tests {
         ring_frame(&mut f, 0, 100003005, 0.45);
         ring_frame(&mut f, 1, 100003000, 0.45);
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::InvalidAnimation)
         );
         ring_frame(&mut f, 1, 40000, 2.7);
         f.data.remove(&0x20022);
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::Unreadable)
         );
         ring_frame(&mut f, 0, 100003005, 0.45);
         f.calls.set(0);
         f.change_head = true;
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::ChangedDuringRead)
         );
         f.change_head = false;
         f.int(0x200ec, 10);
         assert_eq!(
-            animation_for_model(&f, 0x20000, 5020),
+            animation_for_model(&f, 0x20000, 5020, None),
             Err(ReadError::InvalidAnimation)
+        );
+    }
+
+    #[test]
+    fn polling_batch_prefers_incoming_attack_over_legacy_only_object_contact() {
+        let mut f = Fixture::default();
+        f.int(0x200e8, 2);
+        f.int(0x200ec, 0);
+        ring_frame(&mut f, 0, 5010, 0.1);
+        ring_frame(&mut f, 1, 3000, 0.5);
+
+        assert_eq!(
+            animation_for_model(&f, 0x20000, 5080, None).unwrap().id,
+            3000
         );
     }
     #[test]

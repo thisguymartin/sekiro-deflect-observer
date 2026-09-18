@@ -1,6 +1,6 @@
 # Sekiro Deflect Observer
 
-![Synthetic reference-style HUD states, not gameplay](docs/images/0.10.0-reference-gallery.png)
+![Current 0.12.1 HUD and practice states, not gameplay](docs/images/0.12.1-practice-gallery.png)
 
 **0.12.1-preview separates enemy-speed practice from alert preferences.**
 Turning off response hints or switching HUD mode no longer changes slowdown
@@ -28,7 +28,7 @@ LOCKED stays visible while the target is fresh but attack timing is unavailable.
 Mikiri hints assume the skill is unlocked. Set `mikiri = false` in the config
 if it is unavailable; supported thrusts then show PARRY. Unknown responses stay
 explicitly UNKNOWN. See [classification evidence and limits](docs/incoming-attacks.md)
-and [0.11.0 baseline checks](docs/validation-0.11.0.md).
+and [current validation](docs/validation-0.12.1.md).
 
 0.9.1 fixes a reproduced DX11 graphics-state leak in the overlay renderer.
 Drawing uses a separate command list with full host-state restoration. The
@@ -98,9 +98,8 @@ python scripts/update-move-coverage.py --check
 git diff --check
 ```
 
-On this machine `python3` is unavailable and the default GNU target lacks
-`dlltool.exe`; explicit MSVC tests are the working Windows path. See
-[Windows instructions](docs/windows.md) and [release checks](docs/release-testing.md).
+See [Windows instructions](docs/windows.md) and
+[release checks](docs/release-testing.md).
 
 ## Evidence and limits
 
@@ -119,6 +118,6 @@ and per-phase parameter IDs are in [incoming coverage](docs/incoming-coverage.js
 The DLL does not press buttons or require telemetry/accounts. Optional F11
 practice temporarily writes eligible enemy animation speed; default-off behavior
 does not change gameplay state. Deflect windows and Wolf's speed are untouched.
-The supplied 0.9.0 clip shows live LOCKED/PARRY cues; the 0.9.1 rendering fix
-still needs a fresh in-game comparison. Optional `incoming_cues = false` retains
+The current synthetic previews show the intended LOCKED/PARRY cues. Live HUD
+comparison after the rendering fix remains outstanding. Optional `incoming_cues = false` retains
 the older estimated press-window mode and its separate [timing ledger](docs/boss-move-coverage.md).

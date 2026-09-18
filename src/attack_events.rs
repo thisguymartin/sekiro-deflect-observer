@@ -6,7 +6,11 @@ pub const BATCH_BYTES: usize = 224;
 
 /// Select within one completed engine batch. Never search preceding history.
 /// Fixed-size input makes the game-thread capture allocation-free.
-pub fn select_batch(raw: &[u8; BATCH_BYTES], model: i32) -> Result<Animation, ReadError> {
+pub fn select_batch(
+    raw: &[u8; BATCH_BYTES],
+    model: i32,
+    npc_param: Option<i32>,
+) -> Result<Animation, ReadError> {
     let head = i32::from_le_bytes(raw[200..204].try_into().unwrap());
     let begin = i32::from_le_bytes(raw[204..208].try_into().unwrap());
     if !(0..10).contains(&head) || !(0..10).contains(&begin) {
@@ -18,26 +22,38 @@ pub fn select_batch(raw: &[u8; BATCH_BYTES], model: i32) -> Result<Animation, Re
         time: 0.0,
         sequence: 0,
     };
-    let mut selected: Option<Animation> = None;
+    let catalog = crate::attack::Catalog::new(model, npc_param);
+    let mut selected: Option<(crate::attack::AnimationPriority, Animation)> = None;
+    let mut ambiguous = false;
     for step in 0..(head - begin + 10) % 10 {
         let slot = ((begin + step) % 10) as usize * 20;
         let frame = decode_animation(raw[slot..slot + 20].try_into().unwrap())?;
         latest = frame;
-        let key = (model, frame.id);
-        if crate::attack_timings::ATTACKS
-            .binary_search_by_key(&key, |a| (a.0, a.1))
-            .is_ok()
-            || crate::attack_timings::SPECIALS
-                .binary_search_by_key(&key, |a| (a.0, a.1))
-                .is_ok()
-        {
-            if selected.is_some_and(|a| a.id != frame.id) {
-                return Err(ReadError::InvalidAnimation);
+        let priority = catalog.priority(frame.id);
+        if priority == crate::attack::AnimationPriority::Unmapped {
+            continue;
+        }
+        match selected {
+            None => {
+                selected = Some((priority, frame));
+                ambiguous = false;
             }
-            selected = Some(frame);
+            Some((current, _)) if priority > current => {
+                selected = Some((priority, frame));
+                ambiguous = false;
+            }
+            Some((current, prior)) if priority == current => {
+                ambiguous |= prior.id != frame.id;
+                selected = Some((priority, frame));
+            }
+            Some(_) => {}
         }
     }
-    Ok(selected.unwrap_or(latest))
+    if ambiguous {
+        Err(ReadError::InvalidAnimation)
+    } else {
+        Ok(selected.map_or(latest, |(_, frame)| frame))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -192,13 +208,30 @@ mod tests {
         raw[204..208].copy_from_slice(&9_i32.to_le_bytes());
         put(&mut raw, 9, frame(3000, 0.5));
         put(&mut raw, 0, frame(40000, 2.0));
-        assert_eq!(select_batch(&raw, 1020).unwrap().id, 3000);
+        assert_eq!(select_batch(&raw, 1020, None).unwrap().id, 3000);
         put(&mut raw, 0, frame(3001, 0.5));
-        assert_eq!(select_batch(&raw, 1020), Err(ReadError::InvalidAnimation));
+        assert_eq!(
+            select_batch(&raw, 1020, None),
+            Err(ReadError::InvalidAnimation)
+        );
         raw[204..208].copy_from_slice(&1_i32.to_le_bytes());
-        assert_eq!(select_batch(&raw, 1020).unwrap().id, -1);
+        assert_eq!(select_batch(&raw, 1020, None).unwrap().id, -1);
         raw[200..204].copy_from_slice(&10_i32.to_le_bytes());
-        assert_eq!(select_batch(&raw, 1020), Err(ReadError::InvalidAnimation));
+        assert_eq!(
+            select_batch(&raw, 1020, None),
+            Err(ReadError::InvalidAnimation)
+        );
+    }
+
+    #[test]
+    fn incoming_attack_wins_over_legacy_only_object_contact() {
+        let mut raw = [0; 224];
+        raw[200..204].copy_from_slice(&1_i32.to_le_bytes());
+        raw[204..208].copy_from_slice(&9_i32.to_le_bytes());
+        put(&mut raw, 9, frame(5010, 0.1));
+        put(&mut raw, 0, frame(3000, 0.5));
+
+        assert_eq!(select_batch(&raw, 5080, None).unwrap().id, 3000);
     }
     #[test]
     fn events_are_ordered_once_and_cancelled_tracks_do_not_continue() {

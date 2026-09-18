@@ -110,7 +110,7 @@ fn capture(module: usize) {
     let mut check = [0; attack_events::BATCH_BYTES];
     let frame = match module.checked_add(0x20) {
         Some(address) if read(address, &mut raw) && read(address, &mut check) && raw == check => {
-            attack_events::select_batch(&raw, owner.model)
+            attack_events::select_batch(&raw, owner.model, owner.npc_param)
         }
         _ => Err(reader::ReadError::ChangedDuringRead),
     };
