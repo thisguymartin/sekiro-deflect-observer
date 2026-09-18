@@ -1,5 +1,15 @@
 # Changelog
 
+## Documentation refresh - 2026-09-18
+
+- Replace the README's synthetic lead image with a gameplay frame of Wolf and
+  the PARRY 70% HUD from the author's new recording; add a short normal-speed loop.
+- Add a timestamped walkthrough of wind-up, active phase, armed practice and
+  attention status, with source provenance and clear limits on what the clip proves.
+- Align current guides and package instructions with 0.12.4, and separate older
+  synthetic previews and installation drafts from current documentation.
+- Documentation and media only; no runtime or packaged-binary change.
+
 ## 0.12.4-preview - 2026-09-18 (70% practice preset)
 
 - Add 70% enemy speed to the saved Shift+F11 cycle: 80% → 90% → 70% → 80%.

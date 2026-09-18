@@ -1,13 +1,13 @@
 # Build and run on Windows
 
-The current source candidate is **0.12.1-preview**, with a configured compact HUD
+The current source candidate is **0.12.4-preview**, with a configured compact HUD
 below the enemy's top posture bar, persistent TOML settings and incoming attack
 response labels without reach/contact prediction. Optional F11 practice slows
 eligible enemy attacks independently of alert preferences and starts off. See
 [practice controls and limits](enemy-speed-practice.md). Build it with
 `scripts/build.ps1`; that produces the new me3
 package. [Current behavior and limits](cue-preview.md), [configuration](configuration.md),
-and [validation](validation-0.12.1.md) supersede older cue descriptions.
+and [validation](validation-0.12.4.md) supersede older cue descriptions.
 
 ## Run a built package
 
@@ -18,9 +18,10 @@ observer profile from its extracted folder.
 The beta ZIP is supplied separately by the author. GitHub's **Code → Download ZIP**
 downloads source code, not a ready-to-play mod.
 
-### Install the 0.12.1 me3 package
+### Install the 0.12.4 me3 package
 
-1. Extract the **me3** ZIP into its own folder, such as `C:\Mods\SekiroDeflectObserver`.
+1. Extract `SekiroDeflectObserver-0.12.4-preview-windows-x64.zip` into its own
+   folder, such as `C:\Mods\SekiroDeflectObserver`.
 2. Install me3 using its [official Windows release](https://github.com/garyttierney/me3/releases).
 3. Keep Steam running and close Sekiro.
 4. Double-click `observer.me3`, or run `launch-observer.cmd` from that folder.
@@ -48,22 +49,19 @@ until it exits completely.
 | F11 | Toggle enemy-speed practice for this session; initially off |
 | Shift+F11 | Switch and save 80% / 90% / 70% enemy speed without changing on/off |
 | Crescent OFF / ON + percentage | Gray off; gold armed; jade applied; amber ! needs attention |
-| PRACTICE / PRACTICE 80% | Armed and waiting / applied slowdown with attack hints disabled |
+| PRACTICE / PRACTICE 70% | Armed and waiting / reported applied speed with a neutral rail, such as with hints disabled |
 | PARRY / DODGE / JUMP / MIKIRI | Incoming response; marker approaches center during wind-up |
 | NO PARRY / UNKNOWN | Deflection disabled / response unresolved |
-| READY, hollow lane | Legacy timing mode only: prepare for the selected hit |
-| Green PARRY NOW, filled lane | Estimated or compatible calibrated defensive press interval |
-| Orange DODGE | Mapped incoming grab; no safe direction is predicted |
-| Blue JUMP | Mapped low sweep |
-| Gray EXPIRED | Press interval ended; no actionable pulse remains |
-| LOCKED | Fresh target without an active timing cue |
-| WATCH | Known attack with unverified response; no button instruction |
+| LOCKED | Fresh target without a current attack cue |
 
-All hotkeys require a focused fresh press and pass through. Lane fill follows
-animation progression. Default mode labels the move and response, with no
-press interval. A preferred pulse exists only in calibrated legacy timing mode. Default incoming mode
-shows response types without reach/contact prediction. F9 research
-can appear without a target but cannot bypass gameplay lock gating.
+All hotkeys require a focused fresh press and pass through. Default incoming
+mode labels the move and its animation phase, without reach/contact prediction
+or an exact press interval. F9 can appear without a target but cannot bypass
+gameplay lock gating. See the [gameplay walkthrough](screenshots.md).
+
+Optional `incoming_cues = false` selects the [legacy timing mode](parry-cue.md),
+which adds READY, PARRY NOW, WATCH and EXPIRED. Those are not default incoming
+response labels.
 
 ## Build the package on Windows
 
@@ -77,7 +75,7 @@ Install these development dependencies once:
 3. Git if cloning the repository; downloading a release source archive also works.
 
 Build a tagged release or the default branch after its checks pass. See
-[current validation](validation-0.12.1.md). Open **Developer PowerShell for Visual
+[current validation](validation-0.12.4.md). Open **Developer PowerShell for Visual
 Studio** in this source folder, then run:
 
 ```powershell
@@ -94,8 +92,8 @@ DLL, verifies that the DLL rejects a non-game host, and creates:
 
 ```text
 target/x86_64-pc-windows-msvc/release/sekiro_deflect_observer.dll
-dist/SekiroDeflectObserver-0.12.1-preview-windows-x64.zip
-dist/SekiroDeflectObserver-0.12.1-preview-windows-x64.zip.sha256
+dist/SekiroDeflectObserver-0.12.4-preview-windows-x64.zip
+dist/SekiroDeflectObserver-0.12.4-preview-windows-x64.zip.sha256
 ```
 
 The ZIP from this command is the **me3 variant**. Follow the me3 instructions
@@ -119,7 +117,7 @@ These are checks to perform, not claims that every condition has passed:
 
 - [ ] Sekiro starts through the chosen loader, with only one observer copy.
 - [ ] F9 displays the expected version and explains unsupported-build/read errors.
-- [ ] Locking onto a living enemy shows the cue or an F9 diagnostic reason; unlocking hides gameplay guidance.
+- [ ] Locking onto a living enemy shows the rail or an F9 diagnostic reason; unlocking clears the rail. The practice moon remains visible without a target.
 - [ ] F6/F7 placement, F8/F9 visibility and F10 reset work once per focused fresh key press; settings survive a full restart.
 - [ ] F11 practice starts off; enabling it affects only eligible enemy phases. Changing alert hints/HUD mode does not change slowdown; F8 hiding disarms it. Complete the [practice checklist](enemy-speed-practice.md#live-check-still-needed).
 - [ ] Malformed config reload preserves the last valid settings and reports the reason.
@@ -147,7 +145,7 @@ save files do not need to be replaced for the me3 installation.
 | Problem | Action |
 | --- | --- |
 | No overlay with me3 | Extract the ZIP fully and keep the DLL next to `observer.me3`; inspect launch output and logs. |
-| Bar is in the wrong position | In 0.12.1, use F6/F7 or the bounded anchor/offset/safe-area settings in cue.toml. Fixed placement uses a configured posture band, not automatic detection. F10 resets offsets. |
+| Bar is in the wrong position | In 0.12.4, use F6/F7 or the bounded anchor/offset/safe-area settings in cue.toml. Fixed placement uses a configured posture band, not automatic detection. F10 resets offsets. |
 | LOCKED during attacks | The target may be detected while the move has no eligible timing instruction. Use F9, enemy/move details and a clip. Older versions may show UNVERIFIED. |
 | Unsupported build / stale or failed reads | Record the F9 reason; the observer suppresses guidance when data is unavailable. |
 | `cargo` is not recognized | Install Rust and open a new terminal. |
@@ -179,6 +177,10 @@ the package. All defaults/ranges and reload/reset behavior are in
 [configuration](configuration.md). The renderer contains no file I/O. F9 works
 without a target; it cannot enable an unlocked gameplay cue. Focus loss hides
 gameplay guidance; regained focus still needs fresh observations.
+
+The [September 18 video](screenshots.md) shows a live 1280 × 720 game viewport
+inside a 2560 × 720 recording. It does not identify the actual display mode or
+complete the following acceptance matrix.
 
 Live acceptance requires 720p/1080p/1440p/4K, ultrawide and letterboxed layouts,
 actual UI scaling, windowed/borderless/fullscreen, resize, focus, lock changes,

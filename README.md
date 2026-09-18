@@ -1,132 +1,158 @@
 # Sekiro Deflect Observer
 
-![0.12.4 practice moon states, enlarged synthetic preview](docs/images/0.12.4-practice-moon.png)
+**Read the attack. Learn the rhythm. Make the deflect yourself.**
 
-**0.12.4-preview adds 80% / 90% / 70% speed presets and a crescent-moon status icon.**
-**F11** toggles practice; **Shift+F11** switches and saves the selected speed.
-The corner moon shows **OFF/ON** and **70%, 80% or 90%**, even without a target.
-Gray means off, gold means armed, jade means applied, and amber **!** means
-attention is needed (F9 gives details). The moon fills out as speed decreases.
-Shift+F11 cycles **80% → 90% → 70% → 80%**; 70% means 30% slower animation.
-F8 hides the HUD and disarms practice.
+![Wolf facing a sword enemy on a snowy bridge, with the green PARRY 70% rail and jade practice moon visible](docs/images/gameplay-2026-09-18-hero.jpg)
 
-Enemy-speed practice remains independent of alert preferences.
-Turning off response hints or switching HUD mode no longer changes slowdown
-eligibility. F11 practice remains initially off; F8 hiding still disarms it.
-Eligible locked-enemy attacks run at 70%, 80% or 90% of their existing animation speed;
-Wolf stays at normal speed. Grabs and unknown/no-parry moves remain unchanged.
-This new mode still needs live verification. See [controls and limits](docs/enemy-speed-practice.md)
-and [build checks](docs/validation-0.12.4.md).
-The [feature boundaries](docs/feature-boundaries.md) document where future
-animation, alert, HUD and speed changes belong.
+*Actual gameplay from the September 18 recording, at 00:38.500. The black side
+margins have been cropped; the game and HUD are unchanged.*
 
-The preserved 0.11.0 baseline improves enemy-specific alerts and combo timing. It identifies
-NPC variants for spear Mikiri and grabs, resolves more boss visual effects, and
-keeps a sparse alert log for longer fights. The top HUD retains its tapered rail,
-green parry lead-in, white diamond and red strike emblem. The diamond travels
-toward the center during wind-up; white/red marks the active parryable attack
-phase, not confirmed sword contact or a successful deflect. DODGE, JUMP, MIKIRI,
-NO PARRY and UNKNOWN retain distinct colors and labels.
+A Windows overlay for Sekiro that identifies a locked enemy's incoming attack
+and shows its animation progress. Optional practice mode slows eligible enemy
+attacks to **90%, 80% or 70% speed** while leaving Wolf's speed unchanged.
+You control every block, deflect, dodge and counter.
 
-The default mode does not require the enemy to be within reach and does not
-predict contact or tell you the exact instant to press. It uses the existing
-animation-batch hook and responses extracted from your game parameters.
-LOCKED stays visible while the target is fresh but attack timing is unavailable.
+**Current source: 0.12.4-preview.**
+[Install](#install-and-run-on-windows) · [Controls](#controls) ·
+[Gameplay walkthrough](docs/screenshots.md) · [Configuration](docs/configuration.md) ·
+[All docs](docs/README.md)
 
-Mikiri hints assume the skill is unlocked. Set `mikiri = false` in the config
-if it is unavailable; supported thrusts then show PARRY. Unknown responses stay
-explicitly UNKNOWN. See [classification evidence and limits](docs/incoming-attacks.md)
-and [current validation](docs/validation-0.12.4.md).
+## How it works
 
-0.9.1 fixes a reproduced DX11 graphics-state leak in the overlay renderer.
-Drawing uses a separate command list with full host-state restoration. The
-reported scene tint still requires an in-game comparison after a full restart.
+1. **Lock onto a living enemy.** The top-center rail follows that target's
+   captured attack animation. Between recognized attacks it shows `LOCKED`, or
+   `PRACTICE` while practice is armed and waiting.
+2. **Read the response and moving diamond.** For a parryable wind-up, the rail
+   lights green and the diamond approaches the center. The `LB` badge names the
+   configured parry button; it can also display `L1` or `RMB`.
+3. **Watch the attack phase.** The white rail and red strike emblem mark the
+   active parryable phase. Use the enemy's movement to time your own input.
+
+![Gameplay loop showing the diamond approaching the center, the white active-phase cue, and the return to PRACTICE](docs/images/gameplay-2026-09-18-demo.gif)
+
+*00:36.800–00:40.400 from the same recording, at normal playback speed; reduced
+to 640 × 360 and 15 fps for the README. [Full-size stills and explanations](docs/screenshots.md).*
+
+The cue describes the enemy's animation phase. **It does not confirm contact,
+detect a successful deflect, or give an exact “press now” instruction.** Default
+incoming mode can show an attack even when the enemy is out of reach.
+
+| Cue | Meaning |
+| --- | --- |
+| **PARRY** | The classified attack permits deflection. |
+| **DODGE** | A classified grab; no dodge direction is chosen. |
+| **JUMP** | A classified low sweep. |
+| **MIKIRI** | A thrust with a supported Mikiri counter route. |
+| **NO PARRY** | Deflection is disabled; no specific alternative is established. |
+| **UNKNOWN** | The attack is known but its response is unresolved. |
+| **LOCKED** | A fresh target is available without a current attack cue. |
+
+Mikiri hints assume you have unlocked the skill. Set `mikiri = false` if you
+have not; supported deflectable thrusts then show PARRY. These response types
+come from the implementation; the new recording illustrates the PARRY sequence.
+See [classification and coverage](docs/incoming-attacks.md) for the other types.
+
+## Practice at your pace
+
+Press **F11** to enable practice for this session. **Shift+F11** cycles
+**80% → 90% → 70% → 80%** and saves your selected speed. Practice starts **off**
+each time you launch the game; the speed selection is remembered.
+
+The crescent moon in the upper-right corner shows `OFF` or `ON` and the selected
+percentage, even without a target. Its color reports the controller's status:
+
+| Moon | Status |
+| --- | --- |
+| Gray | Practice is off. |
+| Gold | Armed and waiting for an eligible attack. |
+| Jade | The controller reports an applied override on the current target. |
+| Amber **!** | Attention needed; open F9 for the reason. |
+
+In the main image, **PARRY 70%** and the jade moon report an applied speed
+override. That means 70% of the enemy's original animation speed, or 30% slower.
+The percentage next to the moon alone is the selected preset, even while waiting.
+
+Practice affects eligible parryable, thrust and sweep attack phases on your
+locked target. Grabs, unknown/no-parry moves and other enemies are excluded.
+Wolf's speed and deflect windows are unchanged. Turning off attack hints does
+not disable practice; **F8 hides the HUD and disarms it**. See
+[practice behavior and limits](docs/enemy-speed-practice.md).
 
 ## Install and run on Windows
 
-1. Close Sekiro completely. Extract the newly built
+1. Close Sekiro completely. Extract
    `SekiroDeflectObserver-0.12.4-preview-windows-x64.zip` into its own folder.
+   Use a built package supplied by the author, or [build from source](#build-and-check).
+   GitHub's **Code → Download ZIP** contains source, not the ready-to-run mod.
 2. Install [me3](https://github.com/garyttierney/me3/releases), keep Steam running,
-   then double-click `observer.me3` or run `launch-observer.cmd`.
-3. Load a save, lock onto a living enemy, and look below the enemy's top posture bar.
-   F9 displays the loaded version and research diagnostics.
-4. Edit `%LOCALAPPDATA%/SekiroDeflectObserver/cue.toml` for placement, appearance
-   or calibration. The file is created on first use and reloaded once per second.
-   See [all defaults, bounds and reset behavior](docs/configuration.md).
-
-For an existing configuration, use `anchor = "top"` and `width = 480`.
-The button badge defaults to `parry_button = "LB"`; `L1` and `RMB` are supported.
-The original scalable [strike emblem](assets/ui/strike-emblem.svg) is exported
-from the same vector geometry used by the live HUD; no texture loading is needed.
+   then double-click `observer.me3` or run `launch-observer.cmd` from the package.
+3. Load a save, lock onto a living enemy, and look for the top-center rail.
+   **F9** shows the loaded version and diagnostics.
+4. Press **F11** if you want optional enemy-speed practice.
 
 Players need no Rust, Python, Visual Studio or Cheat Engine. Use one observer
-loading method per session. The older **0.6.3 drop-in ZIP** described in
-[the sharing guide](docs/sharing-beta.md) remains a historical package and
-contains none of these changes. Do not overwrite another mod's `dinput8.dll`.
-The current build is a local research candidate, not a gameplay-validated release.
+loading method per session. The historical 0.6.3 drop-in package does not contain
+the current features; do not overwrite another mod's `dinput8.dll`.
 
-| Key | Action (focused game, one fresh press) |
+Settings live in `%LOCALAPPDATA%/SekiroDeflectObserver/cue.toml`. The file is
+created on first use and reloaded once per second. For an older layout, use
+`anchor = "top"`, `width = 480` and F10 to reset offsets. See
+[all settings](docs/configuration.md) and [Windows troubleshooting](docs/windows.md#troubleshoot).
+
+## Controls
+
+| Key | Action |
 | --- | --- |
-| F6 / F7 | Lower / raise by 8 reference pixels; persist the offset |
-| F8 | Toggle gameplay HUD; persist visibility; hiding disarms practice |
-| F9 | Toggle separate research panel; persist its visibility |
-| F10 | Reset horizontal and vertical offsets to zero |
-| F11 | Toggle enemy speed practice for this session; starts off |
-| Shift+F11 | Switch between 80%, 90% and 70% enemy speed; save the selected level |
+| F6 / F7 | Lower / raise the rail by 8 reference pixels; save the offset. |
+| F8 | Show / hide the gameplay HUD; hiding also disarms practice. |
+| F9 | Show / hide the diagnostics panel and loaded version. |
+| F10 | Reset horizontal and vertical offsets. |
+| F11 | Toggle enemy-speed practice for this session. |
+| Shift+F11 | Switch and save 80% / 90% / 70% speed without changing on/off. |
 
-All hotkeys pass through; ordinary combat input is never captured. F9 may show
-research without a target but cannot enable an unlocked gameplay cue. Invalid,
-dead, lost, switched or stale target observations clear timing and pulses.
-The freshness ceiling remains 50 ms. Optional legacy timing mode uses bounded
-projection; default incoming mode has no press/contact window.
+Hotkeys require a fresh press while the game is focused and pass through to the
+game. Combat input is never captured or automated. Lost, dead, switched or stale
+targets clear attack guidance; the observation freshness ceiling is 50 ms.
 
-To remove a me3 installation, close the game and stop using the observer profile;
-remove its extracted folder if desired. Start normally through Steam. Keep
-shared loader files used by other mods. A full process restart is required to
-load a rebuilt DLL. Removing the config while closed resets all settings.
+To uninstall, close the game and stop using the observer's me3 profile. Remove
+its extracted folder if desired, keep shared loader files, and launch normally
+through Steam. A rebuilt DLL requires a full game restart. Removing the local
+config while the game is closed resets settings.
+
+## Status and coverage
+
+The [new recording](docs/screenshots.md) shows the live PARRY rail, active-phase
+emblem and 70% practice status. It provides a visual demonstration, not a
+controlled measurement of slowdown or deflect success. The clip does not show
+F9 or identify the loaded DLL hash. Exact timing, cleanup across game transitions,
+boss/form coverage and the earlier scene-tint report still need dedicated checks.
+See [current validation](docs/validation-0.12.4.md).
+
+The fallback data classifies **2,112 phases across 53 models**, including **293
+unknown** phases. Another 3,730 entries describe 78 NPC behavior variations;
+these overlap the fallback data and are not additional unique moves or validated
+successes. [Detailed evidence](docs/incoming-attacks.md) and
+[per-phase coverage](docs/incoming-coverage.json) document the limits.
+
+The overlay uses no telemetry or account. F11 explicitly enables temporary
+enemy animation-speed writes; it starts disabled. Game files, saves, Wolf's
+speed and deflect windows are not modified. Optional `incoming_cues = false`
+selects the separate [legacy estimated timing mode](docs/parry-cue.md).
 
 ## Build and check
 
-Install pinned Rust via rustup and Visual Studio Build Tools with Desktop C++
-and the Windows SDK. From Developer PowerShell in this checkout:
+Install the pinned Rust toolchain through rustup and Visual Studio Build Tools
+with Desktop C++ and the Windows SDK. From Developer PowerShell:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-The script checks formatting, Clippy, tests, builds the MSVC release DLL, tests
-non-game host rejection and packages it with `cue.toml`, licenses and checksums.
-It replaces a same-version ZIP; preserve previous candidates before rebuilding.
-The generated tables suffice to compile; no game archives are needed to run.
+The script checks formatting, Clippy and tests, builds the MSVC release DLL,
+checks non-game host rejection, and packages configuration, licenses and
+checksums. It replaces a same-version ZIP; preserve previous candidates first.
+Generated tables are included, so building does not require game archives.
 
-```powershell
-cargo fmt --all -- --check
-cargo test --locked --offline --target x86_64-pc-windows-msvc
-python scripts/test-attack-timings.py
-python scripts/update-move-coverage.py --check
-git diff --check
-```
-
-See [Windows instructions](docs/windows.md) and
-[release checks](docs/release-testing.md).
-
-## Evidence and limits
-
-The fallback table covers **2,112 phases across 53 models**: 1,632 parry, 41 dodge,
-59 jump, 66 Mikiri, 21 no-parry and 293 unknown. A further 3,730 entries describe
-78 specific NPC behavior variations. These overlap the fallback entries; they
-are not additional unique moves or gameplay successes. Live variant identity
-and responses still need an in-game check; complete boss/form coverage is not claimed.
-
-The generator resolves harmless warning effects and explicit Mikiri detection
-hitboxes without treating them as conflicting damaging attacks. Conflicting
-behavior variants stay UNKNOWN when NPC identity is unavailable. Unresolved
-projectile routes remain UNKNOWN. Exact sources
-and per-phase parameter IDs are in [incoming coverage](docs/incoming-coverage.json).
-
-The DLL does not press buttons or require telemetry/accounts. Optional F11
-practice temporarily writes eligible enemy animation speed; default-off behavior
-does not change gameplay state. Deflect windows and Wolf's speed are untouched.
-The current synthetic previews show the intended LOCKED/PARRY cues. Live HUD
-comparison after the rendering fix remains outstanding. Optional `incoming_cues = false` retains
-the older estimated press-window mode and its separate [timing ledger](docs/boss-move-coverage.md).
+See [Windows build instructions](docs/windows.md),
+[release checks](docs/release-testing.md), [architecture](docs/architecture.md)
+and [feature ownership](docs/feature-boundaries.md).

@@ -4,7 +4,7 @@ This release adds a persistent practice status crest to the upper-right corner
 of the playable viewport. It draws without a target and does not change attack
 classification, practice eligibility, memory writes or restoration policy.
 
-![Practice crest states, enlarged synthetic render](images/0.12.2-practice-indicator.png)
+![Practice crest states, enlarged synthetic render](images/archive/0.12.2-practice-indicator.png)
 
 ## Checks performed
 

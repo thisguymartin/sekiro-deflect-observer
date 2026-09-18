@@ -4,7 +4,7 @@ F11 remains on/off. Shift+F11 switches and saves 80% / 90% speed. The persistent
 crescent-and-katana badge reports OFF/ON and selected speed, including without
 a target. Color distinguishes off, armed, applied and attention states.
 
-![Enlarged synthetic moon badge states](images/0.12.3-practice-moon.png)
+![Enlarged synthetic moon badge states](images/archive/0.12.3-practice-moon.png)
 
 All 136 Windows MSVC tests passed, including shortcut repeat/key-up handling,
 persisted speed changes and external-file conflicts, switching 80%/90% without

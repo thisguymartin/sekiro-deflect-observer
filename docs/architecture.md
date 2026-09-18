@@ -1,4 +1,4 @@
-# Native observer architecture (0.12.1-preview)
+# Native observer architecture (0.12.4-preview)
 
 The DX11 backend is the pinned hudhook 0.9.2 source under `vendor/hudhook` with
 the patch documented in `OBSERVER-PATCH.md`. HUD commands are recorded on a
@@ -6,7 +6,7 @@ private deferred context and submitted with `ExecuteCommandList(..., TRUE)`;
 the D3D runtime restores host context state. Empty draw data does no GPU work.
 Partial command lists are discarded on error. Texture updates touch only
 renderer-owned resources. The old incomplete manual state backup is removed.
-See `tests/dx11-render-isolation.rs` and [current validation](validation-0.12.1.md).
+See `tests/dx11-render-isolation.rs` and [current validation](validation-0.12.4.md).
 
 The default alert path is `Engine::incoming` -> `src/incoming.rs` ->
 `src/attack.rs`, using `src/incoming_attacks.rs` and the exact evidence in
@@ -98,7 +98,10 @@ example is never used as an unlocked gameplay fallback.
 to the game. No combat input capture, keyboard hook or synthetic input is added.
 F9 is independent of target validity and cannot bypass gameplay lock-on gating.
 F11 arms practice for the current process only. F8 hiding disarms practice;
-showing the HUD again does not rearm it. Alert response toggles and HUD mode do
+showing the HUD again does not rearm it. Shift+F11 cycles and saves 80%, 90% and
+70% speed without changing arming. The corner moon reports OFF/ON, the selected
+percentage and controller status independently of the attack rail.
+Alert response toggles and HUD mode do
 not enable or disable slowdown. The worker runs the speed controller outside
 the render mutex; no speed writes run in the DX11 or animation-hook callbacks.
 
@@ -133,6 +136,8 @@ Win32 contracts were checked against official Microsoft documentation for
 [GetWindowThreadProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getwindowthreadprocessid)
 and [MoveFileExW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexw).
 
-Automated checks and renderer images are synthetic evidence. Live timing,
-menu and loading behavior, actual posture spacing, and accepted defensive
-outcomes still require the [gameplay checklist](../tests/manual/gameplay-checklist.md).
+Automated checks and generated renderer images are synthetic evidence. The
+[September 18 recording](screenshots.md) additionally shows the live HUD and
+70% practice states. Measured timing, menu/loading lifecycle, spacing across
+display setups and accepted defensive outcomes still require the
+[gameplay checklist](../tests/manual/gameplay-checklist.md).

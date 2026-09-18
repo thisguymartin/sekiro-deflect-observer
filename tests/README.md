@@ -1,9 +1,11 @@
 # Tests and remaining requirements
 
-The Rust code has unit tests for executable-name checks, SHA-256 diagnostics, read-error propagation, and F8 repeat handling. Run them on macOS or Windows with:
+The current Rust suites cover identity/read failures, attack classification,
+animation timing, practice eligibility and restoration, settings/hotkeys, and
+HUD/DX11 behavior. Run the complete suite on Windows with the pinned toolchain:
 
-```sh
-cargo test --locked
+```powershell
+cargo test --locked --offline --all-targets --target x86_64-pc-windows-msvc
 ```
 
 The DLL and render hooks are Windows-only. These unit tests do not load the DLL, start Sekiro, or prove in-game behavior. Run the complete Windows build checks through [scripts/build.ps1](../scripts/build.ps1), then follow [the native first-launch checklist](../docs/windows.md#test-the-first-launch).
@@ -54,7 +56,7 @@ exercises the vendored production DX11 backend on a windowless WARP device.
 It checks that host bindings and pixels outside the cue survive repeated and
 hidden frames on UNORM and sRGB targets. It reproduced the upstream 0.9.2
 render-target leak before the deferred-context fix. See
-[current validation](../docs/validation-0.12.1.md) for the live-comparison limit.
+[current validation](../docs/validation-0.12.4.md) for the live-comparison limit.
 
 When a native implementation exists, test these behaviors through its actual settings and renderer boundaries:
 

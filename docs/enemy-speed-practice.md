@@ -31,7 +31,7 @@ disarms; F8 hiding also disarms. Focus loss releases the current speed override,
 but leaves the session armed for returning to the game. Restarting starts off.
 `practice_speed` accepts 0.5 through 1.0 inclusive; 1.0 performs no slowdown.
 
-The first preview supports recognized PARRY, JUMP and MIKIRI wind-up/active
+The current preview supports recognized PARRY, JUMP and MIKIRI wind-up/active
 phases on the locked enemy. It retains slowdown between recognized combo hits
 and releases it after the last active phase or an ineligible animation change.
 DODGE grabs, NO PARRY, UNKNOWN, absent/stale animation and unfocused/hidden HUD
@@ -41,9 +41,11 @@ With attack hints disabled, `PRACTICE 80%` still reports an applied override.
 Normal movement and recovery outside those phases are not intentionally slowed.
 Other enemies run normally. Grab alerts remain available at normal speed.
 
-This is an animation-speed prototype, **not live-gameplay validated**. Projectile
-flight, AI timers, sound and other independent systems are not rescaled. Some
-otherwise classified attacks can contain such systems. Paired grabs are skipped
+The [September 18 gameplay recording](screenshots.md) shows PARRY 70%, the
+active-phase emblem and gold/jade/amber moon states. It demonstrates the HUD
+in combat; it does not measure the animation-rate change or verify every cleanup
+path. Projectile flight, AI timers, sound and other independent systems are not
+rescaled. Some otherwise classified attacks can contain such systems. Paired grabs are skipped
 because independently changing one participant could desynchronize the action.
 Mikiri/deflect reactions still require live checks. This does not widen Wolf's
 deflect window or generate controller/keyboard input. It is not a contact
@@ -99,7 +101,7 @@ or `speed_unavailable`; `external_change_paused` requires explicit rearming.
 
 ## Live check still needed
 
-Use the separately packaged 0.12.1 preview and fully restart Sekiro. First verify
+Use the separately packaged 0.12.4 preview and fully restart Sekiro. First verify
 normal cues with F11 off, then enable on an ordinary sword enemy. Confirm `80%`
 appears only during eligible attacks, Wolf stays normal, and movement/recovery
 returns to normal. Compare the same move with practice off/on, then check:
@@ -110,9 +112,12 @@ returns to normal. Compare the same move with practice off/on, then check:
 4. Grabs/unknowns keep normal speed and retain their existing alert labels.
 5. Log original/applied values, cleanup status and measured animation delta per
    real second; note any external-change pause or apparent sound/physics mismatch.
+6. Shift+F11 cycles 80% → 90% → 70% → 80% both while off and while armed;
+   the selected speed survives restart, but practice restarts off. Confirm
+   switching speeds during an attack restores the baseline before reapplying.
 
-Retain the pushed 0.11.0 build as the comparison baseline. No new live trial was
-possible while Sekiro was closed; synthetic tests do not establish these results.
+Retain the pushed 0.11.0 build as the comparison baseline. The new recording is
+visual evidence only; these controlled comparisons and lifecycle checks remain open.
 Both builds use the same local config file. If a 0.12.x hotkey save adds
 `practice_speed`, remove that setting before running 0.11.0; its older strict
 parser does not recognize the new key and otherwise falls back to defaults.

@@ -1,5 +1,10 @@
 # Listing text to review before publication
 
+**Historical 0.6.3 drop-in draft.** The current 0.12.4 me3 preview has different
+installation instructions, HUD behavior and optional enemy-speed practice.
+Use the [current README](../README.md) and [gameplay images](screenshots.md)
+when preparing a new listing; the text below describes the old package only.
+
 **Title:** Sekiro Deflect Observer - Experimental Beta
 
 **Summary:** A visual timing slider above Wolf for selected incoming attacks.

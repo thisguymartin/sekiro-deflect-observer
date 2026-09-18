@@ -1,7 +1,7 @@
 # Share the 0.6.3 friend beta
 
 This page describes the historical 0.6.3 drop-in package. For the current
-0.12.1 me3 preview, use the [Windows run guide](windows.md) and
+0.12.4 me3 preview, use the [Windows run guide](windows.md) and
 [practice controls](enemy-speed-practice.md). Do not label the older ZIP as a
 current build; its DLL does not contain the later HUD or slowdown features.
 
@@ -38,9 +38,9 @@ The ZIP was reopened and all eight files compared with their packaged bytes.
 No game files, saves, recordings, development tools or me3 binaries are included.
 The loader is distributed with its and its linked-library license notices.
 
-The [build-and-run guide](windows.md) now covers both installation methods,
-building the observer from source, and running a freshly compiled DLL with the
-drop-in loader. The normal build command creates the me3 package.
+The [build-and-run guide](windows.md) covers the current me3 installation and
+building the observer from source. The historical drop-in procedure remains
+on this page. The normal build command creates the me3 package.
 
 To repackage the tested drop-in release, retain `dist/drop-in-research`, the
 original 0.6.3 ZIP, and its extracted `Mods/SekiroDeflectObserver-0.6.3-preview`
