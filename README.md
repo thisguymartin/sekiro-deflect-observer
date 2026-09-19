@@ -65,15 +65,17 @@ See the [gameplay walkthrough](docs/gameplay/walkthrough.md) and
 ## Use practice mode
 
 Press **F11** to enable practice for the current session. Press **Shift+F11**
-to cycle through **80% -> 90% -> 70% -> 80%** enemy animation speed. Press
+to cycle through **90% -> 80% -> 70% -> 60% -> 90%** enemy animation speed. Press
 **F11** again to turn practice off. Changing the speed keeps the current on/off
-state. Practice starts off after every game restart, but remembers your speed.
+state. New settings select 90% speed. Practice starts off after every game
+restart, but remembers your speed.
 
 ![Enlarged moon comparison showing ON at 90%, 80%, and 70%, followed by OFF at 70%](docs/images/0.12.4-practice-moon.png)
 
 This enlarged renderer-generated illustration shows the upper-right moon's
 presets and off state. The moon grows fuller as you select more slowdown.
-90% means 10% slower, 80% means 20% slower, and 70% means 30% slower.
+90% means 10% slower, 80% means 20% slower, 70% means 30% slower, and
+60% means 40% slower. The illustration shows the original three presets.
 This illustration is separate from the real gameplay images above.
 
 The moon shows `OFF` or `ON` and your selected speed, even without a target.

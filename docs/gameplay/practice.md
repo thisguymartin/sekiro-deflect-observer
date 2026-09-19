@@ -7,13 +7,14 @@ game clock, and deflect windows remain unchanged.
 
 1. Keep Sekiro focused and the HUD visible. If you hid it, press **F8** to show it.
 2. Press **F11** to arm practice for the current game session. The moon shows `ON`.
-3. Press **Shift+F11** to cycle through **80% -> 90% -> 70% -> 80%** enemy speed.
+3. Press **Shift+F11** to cycle through **90% -> 80% -> 70% -> 60% -> 90%** enemy speed.
 4. Lock onto an enemy and watch the moon during an eligible attack. Jade means
    the controller reports an applied speed override.
 5. Press **F11** again to disable practice. The moon returns to gray `OFF`
    after cleanup, and attack hints remain available.
 
-Practice starts off after every game restart. The selected percentage persists.
+New settings select 90% speed. Practice starts off after every game restart.
+The selected percentage persists.
 Changing the selected speed does not turn practice on or off. Both practice
 hotkeys require the game to be focused and the HUD to be visible.
 
@@ -23,7 +24,9 @@ hotkeys require the game to be focused and the HUD to be visible.
 
 This is a renderer-generated illustration of the upper-right indicator,
 enlarged so you can compare its shape and text. It is not a gameplay screenshot.
-The thin moon represents 90% speed, the wider moon 80%, and the fullest moon 70%.
+This illustration shows the original three presets. The thin moon represents
+90% speed, the wider moon 80%, and the fullest moon 70%. The 60% preset shares
+the fullest shape and displays 60%.
 The sword remains inside the moon at each level.
 
 The percentage is the enemy's selected animation speed relative to its original
@@ -34,6 +37,7 @@ speed. A lower percentage gives you more time to watch the attack:
 | 90% | 10% slower | About 1.11 real seconds. |
 | 80% | 20% slower | About 1.25 real seconds. |
 | 70% | 30% slower | About 1.43 real seconds. |
+| 60% | 40% slower | About 1.67 real seconds. |
 
 At 80%, a remaining 400 ms wind-up takes about 500 ms while the override is
 applied. These are multiplier examples, not measurements from the recording.
