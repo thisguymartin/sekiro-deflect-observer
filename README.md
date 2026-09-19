@@ -16,10 +16,6 @@ Current source: **0.12.4-preview**.
 
 ## Install
 
-Open [the standalone build and installation guide](index.html) in a browser
-for first-release packaging steps and player instructions. The guide is also
-included in the downloadable package and works offline.
-
 1. Close Sekiro.
 2. Extract `SekiroDeflectObserver-0.12.4-preview-windows-x64.zip` into its own
    folder. GitHub's **Code > Download ZIP** contains source code, not the mod.

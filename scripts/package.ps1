@@ -28,7 +28,6 @@ try {
         Copy-Item -LiteralPath (Join-Path $projectRoot "packaging/$name") -Destination $staging
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $staging
-    Copy-Item -LiteralPath (Join-Path $projectRoot 'index.html') -Destination $staging
     Copy-Item -LiteralPath (Join-Path $projectRoot 'assets/ui/strike-emblem.svg') -Destination $staging
 
     $notice = [System.Text.StringBuilder]::new()
