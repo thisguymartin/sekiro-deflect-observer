@@ -8,7 +8,7 @@ pub struct Stroke {
 }
 
 /// A true crescent, triangulated so the open side never fills in. Stronger
-/// slowdown gives a wider moon: 90% is slim, 80% wider, and 70% fullest.
+/// slowdown gives a wider moon: 90% is slim, 80% wider, and 70% or lower fullest.
 pub fn practice_moon_triangles(factor: f32) -> Vec<[[f32; 2]; 3]> {
     let offset = ((1.0 - factor) * 45.0).clamp(3.0, 12.0);
     let tip_y = 22.0 * 60.0_f32.to_radians().sin();

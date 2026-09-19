@@ -23,11 +23,11 @@ width = 480
 opacity = 0.95
 parry_button = "LB"
 reduced_flash = false
-practice_speed = 0.8
+practice_speed = 0.9
 ```
 
 Use F6 and F7 to change `offset_y`. Press F10 to reset both offsets. Press
-Shift+F11 to cycle and save the 80%, 90%, and 70% practice presets.
+Shift+F11 to cycle and save the 90%, 80%, 70%, and 60% practice presets.
 
 ## Settings reference
 
@@ -35,7 +35,7 @@ Shift+F11 to cycle and save the 80%, 90%, and 70% practice presets.
 | --- | ---: | --- |
 | `incoming_cues` | `true` | `true` uses incoming attack labels. `false` uses legacy estimated timing. |
 | `mikiri` | `true` | `false` shows PARRY for supported deflectable thrusts. |
-| `practice_speed` | `0.8` | `0.5` through `1.0` enemy animation multiplier. |
+| `practice_speed` | `0.9` | `0.5` through `1.0` enemy animation multiplier. |
 | `anchor` | `top` | `top`, `posture`, or `overhead`. |
 | `parry_button` | `LB` | `LB`, `L1`, or `RMB`. This changes the label only. |
 | `offset_x` | `0` | `-480` through `480` reference pixels. |

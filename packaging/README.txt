@@ -3,7 +3,7 @@ Incoming attack HUD and optional enemy-speed practice for Windows x64
 
 Follow a locked enemy's attack animation with a top-center rail and response
 label. You control every defensive input. Optional F11 practice slows eligible
-enemy attacks to 90%, 80% or 70% of their original animation speed.
+enemy attacks to 90%, 80%, 70% or 60% of their original animation speed.
 
 INSTALL
 1. Close Sekiro completely and extract this package into its own folder.
@@ -32,8 +32,9 @@ press-time instruction, confirmed weapon contact or successful-deflect signal.
 Default incoming mode can show an attack even when the enemy is out of reach.
 
 PRACTICE
-F11 starts OFF every process. Shift+F11 cycles 80% -> 90% -> 70% -> 80% and saves
-the level without changing on/off. 70% speed means 30% slower animation.
+F11 starts OFF every process. New settings select 90% speed.
+Shift+F11 cycles 90% -> 80% -> 70% -> 60% -> 90% and saves the level without
+changing on/off. 70% speed means 30% slower animation.
 The upper-right crescent shows OFF/ON plus the selected percentage:
   Gray = off. Gold = armed/waiting. Jade = applied. Amber ! = check F9.
 The moon remains visible without a target and while off. It grows fuller at

@@ -42,7 +42,7 @@ practice turned off with 70% still selected. This is a visual reference, not a
 gameplay capture.
 
 Press **F11** to turn practice on or off. Press **Shift+F11** to select
-**80% -> 90% -> 70% -> 80%** without changing the on/off state. The selected
+**90% -> 80% -> 70% -> 60% -> 90%** without changing the on/off state. The selected
 speed survives a restart, but practice always starts off.
 
 | Appearance | Meaning |

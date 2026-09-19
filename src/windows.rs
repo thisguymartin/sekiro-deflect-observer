@@ -131,7 +131,7 @@ fn start_observer(module: *mut c_void) -> Result<(), Box<dyn std::error::Error>>
     }
     log_event(
         &mut log,
-        "Hooks installed. Incoming attack response HUD by default; no reach/contact prediction. Optional legacy timing mode. F6/F7: persist placement; F8: visibility; F9: diagnostics; F10: reset offsets; F11: session-only enemy speed practice (initially off); Shift+F11: select 80%/90%/70% speed.",
+        "Hooks installed. Incoming attack response HUD by default; no reach/contact prediction. Optional legacy timing mode. F6/F7: persist placement; F8: visibility; F9: diagnostics; F10: reset offsets; F11: session-only enemy speed practice (initially off); Shift+F11: select 90%/80%/70%/60% speed.",
     )?;
     Ok(())
 }
@@ -268,7 +268,7 @@ impl ImguiRenderLoop for Observer {
         submitted.invalidated_at = self.diagnostics.gate.invalidated_at();
         submitted.surface = ui.io().display_size;
         submitted.display_mode = "unobserved_record_in_trial";
-        let mut practice_speed = 0.8;
+        let mut practice_speed = crate::config::Config::default().practice_speed;
         let (target, advancing, cue_status, sample_age, config_diagnostic, inactive_profiles) =
             match self.diagnostics.cue.lock() {
                 Ok(mut state) => {
@@ -568,7 +568,7 @@ impl ImguiRenderLoop for Observer {
                 ui.text(format!("Executable SHA256: {}...", &self.fingerprint[..12]));
                 ui.separator();
                 ui.text("Incoming labels identify move responses; they do not predict contact.");
-                ui.text("F6/F7: placement. F8: cue/off. F9: research. F10: reset. F11: practice. Shift+F11: 80/90/70%.");
+                ui.text("F6/F7: placement. F8: cue/off. F9: research. F10: reset. F11: practice. Shift+F11: 90/80/70/60%.");
                 ui.text(format!(
                     "Enemy speed practice: {practice_status}; {}% configured; session toggle {}",
                     practice_speed * 100.0,

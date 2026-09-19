@@ -67,8 +67,8 @@ illustration, the moon grows fuller as the selected speed decreases. The
 rightmost moon is gray because practice is off, with 70% saved as the selection.
 
 Press **F11** to turn practice on or off. Press **Shift+F11** to cycle
-**80% -> 90% -> 70% -> 80%** without changing whether practice is enabled.
-The presets mean 20%, 10%, and 30% slower enemy animation, respectively.
+**90% -> 80% -> 70% -> 60% -> 90%** without changing whether practice is enabled.
+The presets mean 10%, 20%, 30%, and 40% slower enemy animation, respectively.
 
 Turning practice off leaves the gray moon and normal attack hints visible.
 **F8** hides the whole HUD and disables practice. Showing the HUD again leaves

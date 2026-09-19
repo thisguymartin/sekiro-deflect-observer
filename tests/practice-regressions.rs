@@ -200,10 +200,10 @@ fn configuration_change_restores_before_rescaling() {
 }
 
 #[test]
-fn switching_80_90_and_70_presets_restores_baseline_without_stacking() {
+fn descending_presets_restore_baseline_without_stacking() {
     let fixture = Fixture::new(1.25);
     let mut controller = Controller::default();
-    for factor in [0.8, 0.9, 0.7, 0.8] {
+    for factor in [0.9, 0.8, 0.7, 0.6, 0.9] {
         let snapshot =
             controller.update(&fixture, BASE, RESEARCH_HASH, true, Some(&target()), factor);
         assert_eq!(snapshot.status, Status::Active);
@@ -216,17 +216,19 @@ fn switching_80_90_and_70_presets_restores_baseline_without_stacking() {
     assert_eq!(
         fixture.writes.borrow().as_slice(),
         &[
-            (SPEED, 1.0),
-            (SPEED, 1.25),
             (SPEED, 1.125),
+            (SPEED, 1.25),
+            (SPEED, 1.0),
             (SPEED, 1.25),
             (SPEED, 0.875),
             (SPEED, 1.25),
-            (SPEED, 1.0),
+            (SPEED, 0.75),
+            (SPEED, 1.25),
+            (SPEED, 1.125),
             (SPEED, 1.25),
         ]
     );
-    for factor in [0.7, 0.8, 0.9] {
+    for factor in [0.9, 0.8, 0.7, 0.6] {
         controller.update(
             &fixture,
             BASE,
@@ -236,7 +238,7 @@ fn switching_80_90_and_70_presets_restores_baseline_without_stacking() {
             factor,
         );
     }
-    assert_eq!(fixture.writes.borrow().len(), 8);
+    assert_eq!(fixture.writes.borrow().len(), 10);
     assert_eq!(fixture.speed(), 1.25);
 }
 
