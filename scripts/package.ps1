@@ -28,6 +28,7 @@ try {
         Copy-Item -LiteralPath (Join-Path $projectRoot "packaging/$name") -Destination $staging
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $staging
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'index.html') -Destination $staging
     Copy-Item -LiteralPath (Join-Path $projectRoot 'assets/ui/strike-emblem.svg') -Destination $staging
 
     $notice = [System.Text.StringBuilder]::new()
@@ -65,6 +66,31 @@ try {
     [System.IO.File]::WriteAllLines((Join-Path $staging 'SHA256SUMS.txt'), $hashLines, $utf8)
     $archive = Join-Path $dist "$packageName.zip"
     Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $archive -Force
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($archive)
+    try {
+        $expected = @(Get-ChildItem -LiteralPath $staging -File)
+        if ($zip.Entries.Count -ne $expected.Count) {
+            throw 'Package file count does not match staging.'
+        }
+        foreach ($file in $expected) {
+            $entry = $zip.GetEntry($file.Name)
+            if ($null -eq $entry) { throw "Package is missing $($file.Name)." }
+            $stream = $entry.Open()
+            $sha256 = [System.Security.Cryptography.SHA256]::Create()
+            try {
+                $actual = [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '')
+                if ($actual -ne (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash) {
+                    throw "Package content does not match staging for $($file.Name)."
+                }
+            }
+            finally {
+                $stream.Dispose()
+                $sha256.Dispose()
+            }
+        }
+    }
+    finally { $zip.Dispose() }
     $archiveHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
     [System.IO.File]::WriteAllText("$archive.sha256", "$archiveHash  $packageName.zip`n", $utf8)
     Write-Host "Package created: $archive"

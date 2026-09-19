@@ -50,3 +50,7 @@ The workflow does not publish a permanent GitHub or Nexus release.
 | Formatting, Clippy, or tests fail | Fix the reported failure before packaging. |
 
 After the build passes, follow the [release test procedure](release.md).
+
+The package includes the offline `index.html` build and installation guide.
+Packaging reopens the ZIP and verifies every entry against the staged files
+before writing the archive checksum.

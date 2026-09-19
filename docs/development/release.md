@@ -3,6 +3,9 @@
 Use this procedure before sharing a native package. Automated tests are required,
 but they do not prove in-game behavior.
 
+Open [the standalone release guide](../../index.html) in a browser for the first
+build, package contents, manual publication steps, and player installation.
+
 ## Prepare the artifact
 
 1. Freeze the source revision, lockfiles, Rust toolchain, loader version, and

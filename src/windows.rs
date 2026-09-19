@@ -403,7 +403,9 @@ impl ImguiRenderLoop for Observer {
         let render_status = submitted.status;
         let practice_status = submitted.practice.status.label();
         self.diagnostics.record_render(submitted);
-        if !self.diagnostics.debug.load(Ordering::Relaxed) {
+        if !self.diagnostics.visible.load(Ordering::Relaxed)
+            || !self.diagnostics.debug.load(Ordering::Relaxed)
+        {
             return;
         }
         let (state, reason, count, age_ms, read_ms, last_present_ms, transitions) =

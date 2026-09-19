@@ -6,6 +6,8 @@ label. You control every defensive input. Optional F11 practice slows eligible
 enemy attacks to 90%, 80%, 70% or 60% of their original animation speed.
 
 INSTALL
+Open index.html in your browser for the offline build and
+installation guide. Players can skip directly to Install and play.
 1. Close Sekiro completely and extract this package into its own folder.
 2. Install me3 separately: https://github.com/garyttierney/me3/releases
 3. Keep Steam running and open observer.me3 or launch-observer.cmd.

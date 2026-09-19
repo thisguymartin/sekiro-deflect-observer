@@ -16,6 +16,10 @@ Current source: **0.12.4-preview**.
 
 ## Install
 
+Open [the standalone build and installation guide](index.html) in a browser
+for first-release packaging steps and player instructions. The guide is also
+included in the downloadable package and works offline.
+
 1. Close Sekiro.
 2. Extract `SekiroDeflectObserver-0.12.4-preview-windows-x64.zip` into its own
    folder. GitHub's **Code > Download ZIP** contains source code, not the mod.
@@ -116,6 +120,9 @@ speed examples, and what happens when you switch targets or leave the game windo
 
 Hotkeys require a fresh press while the game is focused. They pass through to
 the game and never capture combat input.
+
+F8 hides the diagnostics panel too. Showing the HUD restores the panel if F9
+is still enabled, but practice stays off until you press F11.
 
 ## Documentation
 
