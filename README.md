@@ -117,6 +117,9 @@ speed examples, and what happens when you switch targets or leave the game windo
 Hotkeys require a fresh press while the game is focused. They pass through to
 the game and never capture combat input.
 
+F8 hides the diagnostics panel too. Showing the HUD restores the panel if F9
+is still enabled, but practice stays off until you press F11.
+
 ## Documentation
 
 - [Install and troubleshoot](docs/users/install.md)

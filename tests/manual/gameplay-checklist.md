@@ -8,6 +8,15 @@ research path; its candidate state is not a successful-deflect result.
 
 Each expected result is a requirement or a research question, not a claim about the existing prototype. Mark unavailable native-only controls `Not applicable` during prototype research. They remain required for the native release.
 
+## HUD visibility acceptance
+
+On the candidate Windows build, open diagnostics with F9 and enable practice
+with F11. Press F8 once. Confirm the rail, moon, and diagnostics all disappear
+and the enemy speed override restores. Hold F8 and confirm it does not flicker
+from key repeat. Release and press F8 again. Confirm the HUD and diagnostics
+return while practice remains off. Restart with visibility saved off and confirm
+that no HUD elements appear until F8. Record the DLL hash and gameplay evidence.
+
 ## State correctness rules
 
 - `Active` requires a current, valid observation of the candidate effect on the local player.
